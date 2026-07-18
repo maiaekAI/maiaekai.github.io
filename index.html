@@ -1098,6 +1098,22 @@ table.admin-table tr:hover td{ background:var(--bg-2); color:var(--text-hi); }
   </div>
 </div>
 
+<div class="modal-backdrop hidden" id="confirm-modal-backdrop">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-body" style="text-align:center; padding-top:32px;">
+      <div style="width:52px; height:52px; border-radius:50%; background:rgba(229,72,77,0.12); display:flex; align-items:center; justify-content:center; margin:0 auto 18px;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#E5484D" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6h12Z"/></svg>
+      </div>
+      <h3 style="font-size:16px; margin-bottom:8px;">ยืนยันการลบ</h3>
+      <div id="confirm-modal-text" style="font-size:13.5px; color:var(--text-mid); line-height:1.6;"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeConfirmModal(false)">ยกเลิก</button>
+      <button class="btn btn-danger" onclick="closeConfirmModal(true)">ลบเลย</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 /* ============================================================
@@ -1455,8 +1471,9 @@ function createPage(){
   renderCurrentPage();
   toast('สร้างหน้า "' + name + '" แล้ว');
 }
-function deletePage(id){
-  if (!confirm('ลบหน้านี้และวิดเจ็ตทั้งหมดในหน้านี้?')) return;
+async function deletePage(id){
+  const ok = await showConfirm('ลบหน้านี้และวิดเจ็ตทั้งหมดในหน้านี้?');
+  if (!ok) return;
   let pages = loadPages().filter(p => p.id !== id);
   savePages(pages);
   currentPageId = pages[0].id;
@@ -1562,8 +1579,9 @@ function addTodo(widgetId, text){
   savePages(pages);
   renderCurrentPage();
 }
-function deleteWidget(widgetId){
-  if (!confirm('ลบวิดเจ็ตนี้?')) return;
+async function deleteWidget(widgetId){
+  const ok = await showConfirm('ลบวิดเจ็ตนี้?');
+  if (!ok) return;
   const { pages, page } = getPageAndWidget(widgetId);
   page.widgets = page.widgets.filter(w => w.id !== widgetId);
   savePages(pages);
@@ -1636,6 +1654,20 @@ function startClocks(){
 
 /* ---------- modal helpers ---------- */
 function closeModal(id){ document.getElementById(id).classList.add('hidden'); }
+
+/* ---------- themed confirm modal (แทนที่ browser confirm()) ---------- */
+let _confirmResolve = null;
+function showConfirm(message){
+  return new Promise(resolve => {
+    _confirmResolve = resolve;
+    document.getElementById('confirm-modal-text').textContent = message;
+    document.getElementById('confirm-modal-backdrop').classList.remove('hidden');
+  });
+}
+function closeConfirmModal(result){
+  document.getElementById('confirm-modal-backdrop').classList.add('hidden');
+  if (_confirmResolve) { _confirmResolve(result); _confirmResolve = null; }
+}
 
 /* ---------- search ---------- */
 function handleGlobalSearch(e){
