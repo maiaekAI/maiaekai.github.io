@@ -1650,16 +1650,114 @@ function handleGlobalSearch(e){
 function openProfileModal(){
   const s = getSession();
   document.getElementById('profile-modal-body').innerHTML = `
-    <div style="display:flex; flex-direction:column; gap:14px; font-size:13.5px;">
+    <div style="display:flex; flex-direction:column; gap:14px; font-size:13.5px; margin-bottom:24px;">
       <div><div style="color:var(--text-lo); font-size:11px; text-transform:uppercase;">ชื่อ-นามสกุล</div><div>${escapeHtml(s.firstname)} ${escapeHtml(s.lastname)}</div></div>
-      <div><div style="color:var(--text-lo); font-size:11px; text-transform:uppercase;">Username</div><div>${escapeHtml(s.username)}</div></div>
+      <div><div style="color:var(--text-lo); font-size:11px; text-transform:uppercase;">Username ปัจจุบัน</div><div>${escapeHtml(s.username)}</div></div>
       <div><div style="color:var(--text-lo); font-size:11px; text-transform:uppercase;">ตำแหน่ง</div><div>${escapeHtml(s.position||'-')}</div></div>
       <div><div style="color:var(--text-lo); font-size:11px; text-transform:uppercase;">แผนก</div><div>${escapeHtml(s.department||'-')}</div></div>
       <div><div style="color:var(--text-lo); font-size:11px; text-transform:uppercase;">สิทธิ์การใช้งาน</div><div><span class="badge ${s.role==='owner'?'owner':'user'}">${s.role==='owner'?'OWNER / ADMIN':'USER'}</span></div></div>
     </div>
+
+    <hr style="border:none; border-top:1px solid var(--line); margin-bottom:20px;">
+
+    <div class="form-msg" id="account-edit-msg"></div>
+
+    <h4 style="font-size:13px; margin-bottom:12px; color:var(--text-mid);">เปลี่ยนชื่อผู้ใช้ (Username)</h4>
+    <div class="form-control">
+      <input type="text" id="edit-new-username" placeholder=" ">
+      <label><span>Username ใหม่</span></label>
+    </div>
+    <button class="btn btn-ghost btn-sm" style="margin-bottom:24px;" onclick="changeUsername()">บันทึก Username ใหม่</button>
+
+    <h4 style="font-size:13px; margin-bottom:12px; color:var(--text-mid);">เปลี่ยนรหัสผ่าน</h4>
+    <div class="form-control">
+      <input type="password" id="edit-new-password" placeholder=" " minlength="4">
+      <label><span>รหัสผ่านใหม่</span></label>
+    </div>
+    <div class="form-control">
+      <input type="password" id="edit-new-password2" placeholder=" " minlength="4">
+      <label><span>ยืนยันรหัสผ่านใหม่</span></label>
+    </div>
+    <button class="btn btn-sm" onclick="changePassword()">บันทึกรหัสผ่านใหม่</button>
   `;
   document.getElementById('profile-modal-backdrop').classList.remove('hidden');
   document.getElementById('user-menu').classList.remove('open');
+}
+
+function showAccountMsg(text, type){
+  const el = document.getElementById('account-edit-msg');
+  if (!el) return;
+  el.textContent = text;
+  el.className = 'form-msg show ' + type;
+}
+
+/* ---------- change username ---------- */
+async function changeUsername(){
+  const newUsername = document.getElementById('edit-new-username').value.trim();
+  if (!newUsername) return;
+  if (!/^[a-zA-Z0-9_.]{3,20}$/.test(newUsername)) {
+    showAccountMsg('Username ต้องเป็นตัวอักษร/ตัวเลข 3-20 ตัว', 'error');
+    return;
+  }
+  if (newUsername.toLowerCase() === OWNER_USERNAME && getSession().role !== 'owner') {
+    showAccountMsg('ชื่อผู้ใช้นี้ถูกสงวนไว้ กรุณาตั้งชื่ออื่น', 'error');
+    return;
+  }
+
+  const newEmail = usernameToEmail(newUsername);
+
+  // 1. เปลี่ยนอีเมล (username) ในระบบ Auth ก่อน
+  const { error: authError } = await sb.auth.updateUser({ email: newEmail });
+  if (authError) {
+    showAccountMsg('เปลี่ยน Username ไม่สำเร็จ: ' + authError.message, 'error');
+    return;
+  }
+
+  // 2. อัปเดตชื่อในตาราง profiles ให้ตรงกัน
+  const session = getSession();
+  const { error: profileError } = await sb
+    .from('profiles')
+    .update({ username: newUsername.toLowerCase() })
+    .eq('id', session.uid);
+
+  if (profileError) {
+    showAccountMsg('เปลี่ยน Username ไม่สำเร็จ: ' + profileError.message, 'error');
+    return;
+  }
+
+  session.username = newUsername.toLowerCase();
+  setSession(session);
+  document.getElementById('user-name').textContent = `${session.firstname} ${session.lastname}`;
+  addLog(newUsername, 'เปลี่ยนชื่อผู้ใช้ (Username)');
+  showAccountMsg('เปลี่ยน Username สำเร็จ! ใช้ชื่อใหม่นี้ในการเข้าสู่ระบบครั้งถัดไป', 'success');
+  document.getElementById('edit-new-username').value = '';
+}
+
+/* ---------- change password ---------- */
+async function changePassword(){
+  const p1 = document.getElementById('edit-new-password').value;
+  const p2 = document.getElementById('edit-new-password2').value;
+  if (!p1 || !p2) return;
+  if (p1 !== p2) {
+    showAccountMsg('รหัสผ่านทั้งสองช่องไม่ตรงกัน', 'error');
+    return;
+  }
+  if (p1.length < 4) {
+    showAccountMsg('รหัสผ่านต้องมีอย่างน้อย 4 ตัวอักษร', 'error');
+    return;
+  }
+
+  const { error } = await sb.auth.updateUser({ password: p1 });
+  if (error) {
+    showAccountMsg('เปลี่ยนรหัสผ่านไม่สำเร็จ: ' + error.message, 'error');
+    return;
+  }
+
+  const session = getSession();
+  addLog(session.username, 'เปลี่ยนรหัสผ่าน');
+  showAccountMsg('เปลี่ยนรหัสผ่านสำเร็จ!', 'success');
+  document.getElementById('edit-new-password').value = '';
+  document.getElementById('edit-new-password2').value = '';
 }
 
 /* ============================================================
