@@ -987,10 +987,14 @@ table.admin-table tr:hover td{ background:var(--bg-2); color:var(--text-hi); }
         <h1>แผงควบคุมแอดมิน</h1>
       </div>
 
-      <div class="admin-stats">
+      <div class="admin-stats" style="grid-template-columns:repeat(5,1fr);">
         <div class="stat-card">
           <div class="stat-label">ผู้ใช้ทั้งหมด</div>
           <div class="stat-value" id="stat-total-users">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">รอการอนุมัติ</div>
+          <div class="stat-value" id="stat-pending" style="color:var(--warn);">0</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">ออนไลน์ตอนนี้</div>
@@ -1004,6 +1008,23 @@ table.admin-table tr:hover td{ background:var(--bg-2); color:var(--text-hi); }
           <div class="stat-label">การเข้าสู่ระบบวันนี้</div>
           <div class="stat-value" id="stat-logins-today">0</div>
         </div>
+      </div>
+
+      <h3 style="font-size:15px; margin-bottom:12px;">ผู้สมัครที่รออนุมัติ</h3>
+      <div class="admin-table-wrap" style="margin-bottom:26px;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>ชื่อ-นามสกุล</th>
+              <th>Username</th>
+              <th>ตำแหน่ง</th>
+              <th>แผนก</th>
+              <th>สมัครเมื่อ</th>
+              <th>การจัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="admin-pending-table"></tbody>
+        </table>
       </div>
 
       <h3 style="font-size:15px; margin-bottom:12px;">รายชื่อผู้ใช้งานที่ลงทะเบียน</h3>
@@ -1205,7 +1226,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('boot-screen').style.display = 'none';
     if (authSession) {
       const profile = await fetchProfile(authSession.user.id);
-      if (profile) {
+      if (profile && profile.approved) {
         const session = {
           uid: authSession.user.id,
           username: profile.username,
@@ -1218,6 +1239,9 @@ window.addEventListener('DOMContentLoaded', async () => {
         setSession(session);
         enterApp(session);
         return;
+      }
+      if (profile && !profile.approved) {
+        await sb.auth.signOut();
       }
     }
     clearSession();
@@ -1316,6 +1340,12 @@ async function handleLogin(e){
     return false;
   }
 
+  if (!profile.approved) {
+    showFormMsg('login-msg', 'บัญชีของคุณกำลังรอแอดมินอนุมัติ กรุณาติดต่อแอดมินหรือรอสักครู่แล้วลองใหม่', 'error');
+    await sb.auth.signOut();
+    return false;
+  }
+
   const session = {
     uid: data.user.id,
     username: profile.username,
@@ -1374,12 +1404,13 @@ async function handleRegister(e){
     return false;
   }
 
-  // สร้างโปรไฟล์ในตาราง profiles ผูกกับ user ที่เพิ่งสมัคร
+  // สร้างโปรไฟล์ในตาราง profiles ผูกกับ user ที่เพิ่งสมัคร (approved = false รอแอดมินอนุมัติก่อน)
   const { error: profileError } = await sb.from('profiles').insert({
     id: data.user.id,
     username: username.toLowerCase(),
     firstname, lastname, position, department,
-    role: 'user'
+    role: 'user',
+    approved: false
   });
 
   submitBtn.disabled = false;
@@ -1390,13 +1421,13 @@ async function handleRegister(e){
     return false;
   }
 
-  addLog(username, `สมัครสมาชิกใหม่ (${firstname} ${lastname} · ${department})`);
-  showFormMsg('register-msg', 'สมัครสมาชิกสำเร็จ! กำลังพาไปหน้าเข้าสู่ระบบ…', 'success');
+  addLog(username, `สมัครสมาชิกใหม่ (${firstname} ${lastname} · ${department}) — รออนุมัติ`);
+  showFormMsg('register-msg', 'สมัครสมาชิกสำเร็จ! กรุณารอแอดมินอนุมัติก่อนจึงจะเข้าสู่ระบบได้', 'success');
   document.getElementById('register-form').reset();
   setTimeout(() => {
     switchAuthTab('login');
     document.getElementById('login-username').value = username;
-  }, 1200);
+  }, 1600);
   return false;
 }
 
@@ -1882,6 +1913,7 @@ function showWorkspaceView(){
 }
 
 async function renderAdminView(){
+  document.getElementById('admin-pending-table').innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-lo); padding:20px;">กำลังโหลดข้อมูล…</td></tr>`;
   document.getElementById('admin-users-table').innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-lo); padding:24px;">กำลังโหลดข้อมูล…</td></tr>`;
   document.getElementById('admin-log-feed').innerHTML = `<div style="color:var(--text-lo); font-size:13px; padding:12px 4px;">กำลังโหลดข้อมูล…</div>`;
 
@@ -1899,13 +1931,30 @@ async function renderAdminView(){
   if (usersError) { console.error(usersError); toast('โหลดรายชื่อผู้ใช้ไม่สำเร็จ', 'error'); }
   if (logsError) { console.error(logsError); toast('โหลด log ไม่สำเร็จ', 'error'); }
 
-  const userList = (users || []).filter(u => u.role !== 'owner');
+  const allNonOwner = (users || []).filter(u => u.role !== 'owner');
+  const pendingList = allNonOwner.filter(u => u.approved === false);
+  const userList = allNonOwner.filter(u => u.approved !== false);
 
   document.getElementById('stat-total-users').textContent = userList.length;
+  document.getElementById('stat-pending').textContent = pendingList.length;
   document.getElementById('stat-departments').textContent = new Set(userList.map(u=>u.department)).size;
   const today = new Date().toDateString();
   document.getElementById('stat-logins-today').textContent = (logs || []).filter(l => l.action.includes('เข้าสู่ระบบสำเร็จ') && new Date(l.created_at).toDateString() === today).length;
   document.getElementById('stat-online').textContent = getSession() ? 1 : 0;
+
+  document.getElementById('admin-pending-table').innerHTML = pendingList.map(u => `
+    <tr>
+      <td>${escapeHtml(u.firstname)} ${escapeHtml(u.lastname)}</td>
+      <td>${escapeHtml(u.username)}</td>
+      <td>${escapeHtml(u.position)}</td>
+      <td>${escapeHtml(u.department)}</td>
+      <td>${new Date(u.created_at).toLocaleString('th-TH')}</td>
+      <td style="display:flex; gap:6px;">
+        <button class="btn btn-sm" style="width:auto; height:30px; padding:0 12px; font-size:12px;" onclick="approveUser('${u.id}','${escapeAttr(u.username)}')">อนุมัติ</button>
+        <button class="btn btn-danger btn-sm" style="width:auto; height:30px; padding:0 12px; font-size:12px;" onclick="rejectUser('${u.id}','${escapeAttr(u.username)}')">ปฏิเสธ</button>
+      </td>
+    </tr>
+  `).join('') || `<tr><td colspan="6" style="text-align:center; color:var(--text-lo); padding:20px;">ไม่มีผู้สมัครที่รออนุมัติ</td></tr>`;
 
   document.getElementById('admin-users-table').innerHTML = userList.map(u => `
     <tr>
@@ -1925,6 +1974,33 @@ async function renderAdminView(){
       <div class="log-time">${new Date(l.created_at).toLocaleString('th-TH')}</div>
     </div>
   `).join('') || `<div style="color:var(--text-lo); font-size:13px; padding:12px 4px;">ยังไม่มีบันทึกการใช้งาน</div>`;
+}
+
+/* ---------- approve / reject pending users ---------- */
+async function approveUser(uid, username){
+  const { error } = await sb.from('profiles').update({ approved: true }).eq('id', uid);
+  if (error) {
+    toast('อนุมัติไม่สำเร็จ: ' + error.message, 'error');
+    return;
+  }
+  const session = getSession();
+  addLog(session ? session.username : 'owner', `อนุมัติผู้ใช้ "${username}"`);
+  toast('อนุมัติ "' + username + '" แล้ว');
+  renderAdminView();
+}
+
+async function rejectUser(uid, username){
+  const ok = await showConfirm(`ปฏิเสธผู้สมัคร "${username}"? บัญชีนี้จะไม่สามารถเข้าใช้งานได้`);
+  if (!ok) return;
+  const { error } = await sb.from('profiles').delete().eq('id', uid);
+  if (error) {
+    toast('ปฏิเสธไม่สำเร็จ: ' + error.message, 'error');
+    return;
+  }
+  const session = getSession();
+  addLog(session ? session.username : 'owner', `ปฏิเสธผู้สมัคร "${username}"`);
+  toast('ปฏิเสธ "' + username + '" แล้ว');
+  renderAdminView();
 }
 
 /* ---------- toast ---------- */
