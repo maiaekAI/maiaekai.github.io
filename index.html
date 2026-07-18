@@ -603,10 +603,18 @@ input:checked + .slider .moon-dot{ opacity:1; }
   font-size:9px; font-weight:700; color:var(--text-lo);
 }
 
+.item-action-btn{
+  width:22px; height:22px; border:none; background:transparent; border-radius:5px;
+  color:var(--text-lo); cursor:pointer; display:flex; align-items:center; justify-content:center;
+  font-size:11px; flex-shrink:0;
+}
+.item-action-btn:hover{ background:var(--bg-3); color:var(--accent); }
+
 .note-body{
   font-size:13px; color:var(--text-mid); line-height:1.7;
   white-space:pre-wrap;
 }
+.note-body:focus{ outline:1px dashed var(--accent); border-radius:4px; }
 
 .rss-item{ padding:8px 0; border-bottom:1px solid var(--line); }
 .rss-item:last-child{ border-bottom:none; }
@@ -616,6 +624,7 @@ input:checked + .slider .moon-dot{ opacity:1; }
 .todo-item{ display:flex; align-items:center; gap:9px; padding:6px 2px; font-size:13px; }
 .todo-item input[type=checkbox]{ accent-color:var(--accent); width:15px; height:15px; }
 .todo-item.done span{ text-decoration:line-through; color:var(--text-lo); }
+.todo-item span[contenteditable="true"]{ outline:1px dashed var(--accent); border-radius:4px; padding:0 2px; }
 
 .clock-widget{ text-align:center; padding:10px 0; }
 .clock-widget .time{ font-family:var(--font-mono); font-size:34px; font-weight:700; color:var(--accent); }
@@ -1076,7 +1085,7 @@ table.admin-table tr:hover td{ background:var(--bg-2); color:var(--text-hi); }
     <div class="modal-head"><h3>เพิ่มหน้าใหม่</h3><button onclick="closeModal('page-modal-backdrop')">✕</button></div>
     <div class="modal-body">
       <div class="form-control">
-        <input type="text" id="new-page-name" required>
+        <input type="text" id="new-page-name" required onkeydown="if(event.key==='Enter'){event.preventDefault();createPage();}">
         <label><span>ชื่อหน้า เช่น Marketing, IT, HR</span></label>
       </div>
     </div>
@@ -1099,7 +1108,7 @@ table.admin-table tr:hover td{ background:var(--bg-2); color:var(--text-hi); }
         <div class="chip-opt" data-type="rss">📰 ประกาศ</div>
       </div>
       <div class="form-control">
-        <input type="text" id="new-widget-title" required>
+        <input type="text" id="new-widget-title" required onkeydown="if(event.key==='Enter'){event.preventDefault();createWidget();}">
         <label><span>ชื่อวิดเจ็ต</span></label>
       </div>
     </div>
@@ -1114,18 +1123,40 @@ table.admin-table tr:hover td{ background:var(--bg-2); color:var(--text-hi); }
   <div class="modal">
     <div class="modal-head"><h3>เพิ่มลิงก์</h3><button onclick="closeModal('link-modal-backdrop')">✕</button></div>
     <div class="modal-body">
+      <div class="form-msg" id="link-add-msg"></div>
       <div class="form-control">
-        <input type="text" id="new-link-name" required>
+        <input type="text" id="new-link-name" required onkeydown="if(event.key==='Enter'){event.preventDefault();addLinkToWidget();}">
         <label><span>ชื่อลิงก์</span></label>
       </div>
       <div class="form-control">
-        <input type="text" id="new-link-url" required>
+        <input type="text" id="new-link-url" required onkeydown="if(event.key==='Enter'){event.preventDefault();addLinkToWidget();}">
         <label><span>URL (เช่น https://...)</span></label>
       </div>
     </div>
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="closeModal('link-modal-backdrop')">ยกเลิก</button>
       <button class="btn" onclick="addLinkToWidget()">เพิ่ม</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop hidden" id="edit-link-modal-backdrop">
+  <div class="modal">
+    <div class="modal-head"><h3>แก้ไขลิงก์</h3><button onclick="closeModal('edit-link-modal-backdrop')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-msg" id="link-edit-msg"></div>
+      <div class="form-control">
+        <input type="text" id="edit-link-name" required onkeydown="if(event.key==='Enter'){event.preventDefault();saveEditLink();}">
+        <label><span>ชื่อลิงก์</span></label>
+      </div>
+      <div class="form-control">
+        <input type="text" id="edit-link-url" required onkeydown="if(event.key==='Enter'){event.preventDefault();saveEditLink();}">
+        <label><span>URL (เช่น https://...)</span></label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('edit-link-modal-backdrop')">ยกเลิก</button>
+      <button class="btn" onclick="saveEditLink()">บันทึก</button>
     </div>
   </div>
 </div>
@@ -1143,7 +1174,7 @@ table.admin-table tr:hover td{ background:var(--bg-2); color:var(--text-hi); }
     <div class="modal-body">
       <div class="form-msg" id="username-edit-msg"></div>
       <div class="form-control">
-        <input type="text" id="edit-new-username" placeholder=" ">
+        <input type="text" id="edit-new-username" placeholder=" " onkeydown="if(event.key==='Enter'){event.preventDefault();changeUsername();}">
         <label><span>Username ใหม่</span></label>
       </div>
     </div>
@@ -1160,7 +1191,7 @@ table.admin-table tr:hover td{ background:var(--bg-2); color:var(--text-hi); }
     <div class="modal-body">
       <div class="form-msg" id="position-edit-msg"></div>
       <div class="form-control">
-        <input type="text" id="edit-position-value" placeholder=" ">
+        <input type="text" id="edit-position-value" placeholder=" " onkeydown="if(event.key==='Enter'){event.preventDefault();savePositionEdit();}">
         <label><span>ตำแหน่งใหม่</span></label>
       </div>
     </div>
@@ -1177,7 +1208,7 @@ table.admin-table tr:hover td{ background:var(--bg-2); color:var(--text-hi); }
     <div class="modal-body">
       <div class="form-msg" id="department-edit-msg"></div>
       <div class="form-control">
-        <input type="text" id="edit-department-value" placeholder=" ">
+        <input type="text" id="edit-department-value" placeholder=" " onkeydown="if(event.key==='Enter'){event.preventDefault();saveDepartmentEdit();}">
         <label><span>แผนกใหม่</span></label>
       </div>
     </div>
@@ -1202,7 +1233,7 @@ table.admin-table tr:hover td{ background:var(--bg-2); color:var(--text-hi); }
         <label><span>รหัสผ่านใหม่</span></label>
       </div>
       <div class="form-control">
-        <input type="password" id="edit-new-password2" placeholder=" " minlength="4" autocomplete="new-password">
+        <input type="password" id="edit-new-password2" placeholder=" " minlength="4" autocomplete="new-password" onkeydown="if(event.key==='Enter'){event.preventDefault();changePassword();}">
         <label><span>ยืนยันรหัสผ่านใหม่</span></label>
       </div>
     </div>
@@ -1253,6 +1284,37 @@ const STORAGE_KEYS = {
   pages: 'mkc_pages_',
   theme: 'mkc_theme'
 };
+
+/* ---------- idle auto-logout (10 นาทีไม่มีการใช้งาน) ---------- */
+const IDLE_LIMIT_MS = 10 * 60 * 1000; // 10 minutes
+let idleTimer = null;
+let idleWarned = false;
+
+function resetIdleTimer(){
+  if (!getSession()) return;
+  idleWarned = false;
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => {
+    if (!getSession()) return;
+    idleWarned = true;
+    toast('ไม่มีการใช้งานเกิน 10 นาที ระบบจะออกจากระบบอัตโนมัติ', 'error');
+    setTimeout(() => { handleLogout(); }, 1200);
+  }, IDLE_LIMIT_MS);
+}
+function idleActivityHandler(){
+  if (idleWarned) return; // already about to log out; ignore late activity
+  resetIdleTimer();
+}
+function startIdleWatcher(){
+  ['mousemove','mousedown','keydown','scroll','touchstart','click','wheel'].forEach(evt => {
+    document.addEventListener(evt, idleActivityHandler, { passive: true });
+  });
+  resetIdleTimer();
+}
+function stopIdleWatcher(){
+  clearTimeout(idleTimer);
+  idleTimer = null;
+}
 
 /* ---------- log helper (เขียนลงตาราง access_logs บน Supabase) ---------- */
 async function addLog(username, action){
@@ -1484,6 +1546,7 @@ async function handleRegister(e){
 }
 
 async function handleLogout(){
+  stopIdleWatcher();
   const session = getSession();
   if (session) addLog(session.username, 'ออกจากระบบ');
   await sb.auth.signOut();
@@ -1508,6 +1571,7 @@ function enterApp(session){
   initPages();
   renderPageList();
   renderCurrentPage();
+  startIdleWatcher();
 }
 
 function toggleUserMenu(){
@@ -1581,10 +1645,14 @@ function selectPage(id){
   renderCurrentPage();
 }
 
-function openPageModal(){ document.getElementById('page-modal-backdrop').classList.remove('hidden'); }
+function openPageModal(){
+  document.getElementById('new-page-name').value = '';
+  document.getElementById('page-modal-backdrop').classList.remove('hidden');
+  setTimeout(() => document.getElementById('new-page-name').focus(), 50);
+}
 function createPage(){
   const name = document.getElementById('new-page-name').value.trim();
-  if (!name) return;
+  if (!name) { toast('กรุณากรอกชื่อหน้า', 'error'); return; }
   const pages = loadPages();
   const id = 'p' + Date.now();
   pages.push({ id, name, widgets: [] });
@@ -1621,24 +1689,35 @@ function renderCurrentPage(){
   attachDragEvents();
 }
 
-/* ---------- drag & drop reorder ---------- */
+/* ---------- drag & drop reorder ----------
+   หมายเหตุ: แก้ปัญหาลากไม่ทำงาน — เดิมสลับ attribute draggable ผ่าน mousedown
+   ซึ่งบางเบราว์เซอร์อ่านค่าไม่ทันตอนเริ่มลาก ตอนนี้ตั้ง draggable="true" ไว้ตายตัว
+   บนตัวการ์ด แล้วใช้ flag ควบคุมว่าจะอนุญาตให้ลากไหม โดยต้องเริ่มจากที่จับ (⠿) เท่านั้น
+------------------------------------------------------------- */
 let draggedWidgetId = null;
 
 function attachDragEvents(){
   const grid = document.getElementById('widget-grid');
   grid.querySelectorAll('.widget').forEach(el => {
-    el.addEventListener('dragstart', onWidgetDragStart);
+    let allowDrag = false;
+    const handle = el.querySelector('.widget-drag-handle');
+    if (handle) {
+      handle.addEventListener('mousedown', () => { allowDrag = true; });
+      handle.addEventListener('touchstart', () => { allowDrag = true; }, { passive: true });
+    }
+    window.addEventListener('mouseup', () => { allowDrag = false; });
+
+    el.addEventListener('dragstart', function(e){
+      if (!allowDrag) { e.preventDefault(); return; }
+      onWidgetDragStart.call(el, e);
+    });
     el.addEventListener('dragover', onWidgetDragOver);
     el.addEventListener('dragleave', onWidgetDragLeave);
     el.addEventListener('drop', onWidgetDrop);
-    el.addEventListener('dragend', onWidgetDragEnd);
-
-    const handle = el.querySelector('.widget-drag-handle');
-    if (handle) {
-      handle.addEventListener('mousedown', () => el.setAttribute('draggable', 'true'));
-      handle.addEventListener('touchstart', () => el.setAttribute('draggable', 'true'), { passive: true });
-    }
-    el.addEventListener('mouseup', () => el.setAttribute('draggable', 'false'));
+    el.addEventListener('dragend', function(e){
+      allowDrag = false;
+      onWidgetDragEnd.call(el, e);
+    });
   });
 }
 
@@ -1687,7 +1766,6 @@ function onWidgetDrop(e){
 
 function onWidgetDragEnd(){
   this.classList.remove('dragging');
-  this.setAttribute('draggable', 'false');
   document.querySelectorAll('.widget').forEach(w => w.classList.remove('drag-over-before', 'drag-over-after'));
   draggedWidgetId = null;
 }
@@ -1705,19 +1783,35 @@ function renderWidget(w){
   if (w.type === 'links') {
     body = `<div class="link-list">` +
       (w.items||[]).map((it,i) => `
-        <a class="link-item" href="${escapeAttr(it.url)}" target="_blank" rel="noopener">
-          <span class="favicon">${escapeHtml((it.name||'?').charAt(0).toUpperCase())}</span>
-          <span>${escapeHtml(it.name)}</span>
-        </a>`).join('') +
+        <div class="link-item" style="justify-content:space-between;">
+          <a href="${escapeAttr(it.url)}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;color:inherit;">
+            <span class="favicon">${escapeHtml((it.name||'?').charAt(0).toUpperCase())}</span>
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(it.name)}</span>
+          </a>
+          <div style="display:flex;gap:1px;flex-shrink:0;">
+            <button class="item-action-btn" title="เลื่อนขึ้น" onclick="moveLinkItem('${w.id}', ${i}, -1)">↑</button>
+            <button class="item-action-btn" title="เลื่อนลง" onclick="moveLinkItem('${w.id}', ${i}, 1)">↓</button>
+            <button class="item-action-btn" title="แก้ไข" onclick="openEditLinkModal('${w.id}', ${i})">✎</button>
+            <button class="item-action-btn" title="ลบ" onclick="removeLinkItem('${w.id}', ${i})">✕</button>
+          </div>
+        </div>`).join('') +
       `<div class="link-item" style="cursor:pointer;color:var(--accent);" onclick="openLinkModal('${w.id}')">+ เพิ่มลิงก์</div>
       </div>`;
   } else if (w.type === 'note') {
     body = `<div class="note-body" contenteditable="true" onblur="updateNote('${w.id}', this.innerText)">${escapeHtml(w.content||'')}</div>`;
   } else if (w.type === 'todo') {
     body = (w.items||[]).map((it,i) => `
-      <div class="todo-item ${it.done?'done':''}">
-        <input type="checkbox" ${it.done?'checked':''} onchange="toggleTodo('${w.id}', ${i})">
-        <span>${escapeHtml(it.text)}</span>
+      <div class="todo-item ${it.done?'done':''}" style="justify-content:space-between;">
+        <div style="display:flex; align-items:center; gap:9px; flex:1; min-width:0;">
+          <input type="checkbox" ${it.done?'checked':''} onchange="toggleTodo('${w.id}', ${i})">
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(it.text)}</span>
+        </div>
+        <div style="display:flex;gap:1px;flex-shrink:0;">
+          <button class="item-action-btn" title="เลื่อนขึ้น" onclick="moveTodoItem('${w.id}', ${i}, -1)">↑</button>
+          <button class="item-action-btn" title="เลื่อนลง" onclick="moveTodoItem('${w.id}', ${i}, 1)">↓</button>
+          <button class="item-action-btn" title="แก้ไข" onclick="editTodoItem('${w.id}', ${i}, this)">✎</button>
+          <button class="item-action-btn" title="ลบ" onclick="removeTodoItem('${w.id}', ${i})">✕</button>
+        </div>
       </div>`).join('') + `
       <div style="display:flex; gap:6px; margin-top:8px;">
         <input type="text" placeholder="เพิ่มรายการ..." style="flex:1; background:var(--bg-2); border:1px solid var(--line); border-radius:6px; padding:6px 8px; color:var(--text-hi); font-size:12.5px;"
@@ -1734,7 +1828,7 @@ function renderWidget(w){
   }
 
   return `
-    <div class="widget" data-widget-id="${w.id}" draggable="false">
+    <div class="widget" data-widget-id="${w.id}" draggable="true">
       <div class="widget-head">
         <div class="widget-head-left">
           <div class="widget-drag-handle" title="ลากเพื่อจัดเรียงใหม่">
@@ -1765,6 +1859,7 @@ function updateNote(widgetId, text){
   const { pages, widget } = getPageAndWidget(widgetId);
   widget.content = text;
   savePages(pages);
+  toast('บันทึกโน้ตแล้ว');
 }
 function toggleTodo(widgetId, idx){
   const { pages, widget } = getPageAndWidget(widgetId);
@@ -1778,6 +1873,42 @@ function addTodo(widgetId, text){
   widget.items.push({ text: sanitize(text.trim()), done: false });
   savePages(pages);
   renderCurrentPage();
+}
+function moveTodoItem(widgetId, idx, dir){
+  const { pages, widget } = getPageAndWidget(widgetId);
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= widget.items.length) return;
+  const tmp = widget.items[idx];
+  widget.items[idx] = widget.items[newIdx];
+  widget.items[newIdx] = tmp;
+  savePages(pages);
+  renderCurrentPage();
+}
+function removeTodoItem(widgetId, idx){
+  const { pages, widget } = getPageAndWidget(widgetId);
+  widget.items.splice(idx, 1);
+  savePages(pages);
+  renderCurrentPage();
+  toast('ลบรายการแล้ว');
+}
+function editTodoItem(widgetId, idx, btnEl){
+  const row = btnEl.closest('.todo-item');
+  const span = row.querySelector('span');
+  if (!span) return;
+  span.setAttribute('contenteditable', 'true');
+  span.focus();
+  document.execCommand('selectAll', false, null);
+  const commit = () => {
+    const { pages, widget } = getPageAndWidget(widgetId);
+    const newText = span.innerText.trim();
+    if (newText) widget.items[idx].text = sanitize(newText);
+    savePages(pages);
+    renderCurrentPage();
+  };
+  span.addEventListener('blur', commit, { once: true });
+  span.addEventListener('keydown', function onKey(e){
+    if (e.key === 'Enter') { e.preventDefault(); span.blur(); }
+  }, { once: true });
 }
 async function deleteWidget(widgetId){
   const ok = await showConfirm('ลบวิดเจ็ตนี้?');
@@ -1799,11 +1930,13 @@ function openWidgetModal(){
     };
   });
   pendingWidgetType = 'links';
+  document.getElementById('new-widget-title').value = '';
   document.getElementById('widget-modal-backdrop').classList.remove('hidden');
+  setTimeout(() => document.getElementById('new-widget-title').focus(), 50);
 }
 function createWidget(){
   const title = document.getElementById('new-widget-title').value.trim();
-  if (!title) return;
+  if (!title) { toast('กรุณากรอกชื่อวิดเจ็ต', 'error'); return; }
   const pages = loadPages();
   const page = pages.find(p => p.id === currentPageId);
   const w = { id: 'w' + Date.now(), type: pendingWidgetType, title };
@@ -1821,20 +1954,84 @@ function createWidget(){
 let pendingLinkWidgetId = null;
 function openLinkModal(widgetId){
   pendingLinkWidgetId = widgetId;
+  document.getElementById('new-link-name').value = '';
+  document.getElementById('new-link-url').value = '';
+  const msg = document.getElementById('link-add-msg');
+  if (msg) msg.className = 'form-msg';
   document.getElementById('link-modal-backdrop').classList.remove('hidden');
+  setTimeout(() => document.getElementById('new-link-name').focus(), 50);
 }
 function addLinkToWidget(){
   const name = document.getElementById('new-link-name').value.trim();
   let url = document.getElementById('new-link-url').value.trim();
-  if (!name || !url) return;
+  if (!name || !url) {
+    const msg = document.getElementById('link-add-msg');
+    if (msg) { msg.textContent = 'กรุณากรอกชื่อลิงก์และ URL ให้ครบ'; msg.className = 'form-msg show error'; }
+    toast('กรุณากรอกชื่อลิงก์และ URL ให้ครบ', 'error');
+    return;
+  }
   if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+  if (!pendingLinkWidgetId) { toast('ไม่พบวิดเจ็ตปลายทาง กรุณาลองใหม่', 'error'); return; }
   const { pages, widget } = getPageAndWidget(pendingLinkWidgetId);
+  if (!widget) { toast('ไม่พบวิดเจ็ตปลายทาง กรุณาลองใหม่', 'error'); return; }
+  if (!widget.items) widget.items = [];
   widget.items.push({ name: sanitize(name), url });
   savePages(pages);
   document.getElementById('new-link-name').value = '';
   document.getElementById('new-link-url').value = '';
   closeModal('link-modal-backdrop');
   renderCurrentPage();
+  toast('เพิ่มลิงก์ "' + name + '" แล้ว');
+}
+
+function moveLinkItem(widgetId, idx, dir){
+  const { pages, widget } = getPageAndWidget(widgetId);
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= widget.items.length) return;
+  const tmp = widget.items[idx];
+  widget.items[idx] = widget.items[newIdx];
+  widget.items[newIdx] = tmp;
+  savePages(pages);
+  renderCurrentPage();
+}
+function removeLinkItem(widgetId, idx){
+  const { pages, widget } = getPageAndWidget(widgetId);
+  widget.items.splice(idx, 1);
+  savePages(pages);
+  renderCurrentPage();
+  toast('ลบลิงก์แล้ว');
+}
+
+let pendingEditLink = null; // { widgetId, idx }
+function openEditLinkModal(widgetId, idx){
+  const { widget } = getPageAndWidget(widgetId);
+  if (!widget || !widget.items || !widget.items[idx]) return;
+  const it = widget.items[idx];
+  pendingEditLink = { widgetId, idx };
+  document.getElementById('edit-link-name').value = it.name;
+  document.getElementById('edit-link-url').value = it.url;
+  const msg = document.getElementById('link-edit-msg');
+  if (msg) msg.className = 'form-msg';
+  document.getElementById('edit-link-modal-backdrop').classList.remove('hidden');
+  setTimeout(() => document.getElementById('edit-link-name').focus(), 50);
+}
+function saveEditLink(){
+  if (!pendingEditLink) return;
+  const name = document.getElementById('edit-link-name').value.trim();
+  let url = document.getElementById('edit-link-url').value.trim();
+  if (!name || !url) {
+    const msg = document.getElementById('link-edit-msg');
+    if (msg) { msg.textContent = 'กรุณากรอกชื่อลิงก์และ URL ให้ครบ'; msg.className = 'form-msg show error'; }
+    return;
+  }
+  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+  const { pages, widget } = getPageAndWidget(pendingEditLink.widgetId);
+  widget.items[pendingEditLink.idx] = { name: sanitize(name), url };
+  savePages(pages);
+  closeModal('edit-link-modal-backdrop');
+  renderCurrentPage();
+  toast('บันทึกลิงก์แล้ว');
+  pendingEditLink = null;
 }
 
 function startClocks(){
