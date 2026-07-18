@@ -1,0 +1,1648 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MKC TOOLS — Workspace Hub</title>
+<style>
+/* ============================================================
+   MKC TOOLS — Design tokens
+   Dark base: #0E0F11 / #17181B / #1F2023
+   Accent:    #F35400 (brand orange)
+   Accent glow: #FF7A33
+   Text:      #F4F1EA (light) / #8A8D93 (muted)
+   Light mode swap defined via [data-theme="light"]
+   Type: 'Space Grotesk' (display/headings) + 'Inter' (body/UI) + 'JetBrains Mono' (data/terminal)
+   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+:root{
+  --bg-0:#0B0C0E;
+  --bg-1:#141518;
+  --bg-2:#1C1E22;
+  --bg-3:#26282D;
+  --line:#2C2E33;
+  --text-hi:#F5F3EE;
+  --text-mid:#B7B9BF;
+  --text-lo:#7B7E85;
+  --accent:#F35400;
+  --accent-hi:#FF7A33;
+  --accent-dim:#5c2306;
+  --accent-glow: rgba(243,84,0,0.35);
+  --success:#2FBF71;
+  --danger:#E5484D;
+  --warn:#F5A623;
+  --radius-sm:6px;
+  --radius-md:10px;
+  --radius-lg:16px;
+  --shadow-lift: 0 8px 24px rgba(0,0,0,0.45);
+  --font-display:'Space Grotesk', sans-serif;
+  --font-body:'Inter', sans-serif;
+  --font-mono:'JetBrains Mono', monospace;
+}
+
+[data-theme="light"]{
+  --bg-0:#F3F1EC;
+  --bg-1:#FFFFFF;
+  --bg-2:#F7F5F0;
+  --bg-3:#ECE9E2;
+  --line:#E1DDD3;
+  --text-hi:#1A1B1D;
+  --text-mid:#54565C;
+  --text-lo:#8A8D93;
+  --accent:#F35400;
+  --accent-hi:#D94800;
+  --accent-dim:#FBD8C2;
+  --accent-glow: rgba(243,84,0,0.18);
+  --shadow-lift: 0 8px 24px rgba(20,20,20,0.08);
+}
+
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{height:100%;}
+body{
+  background:var(--bg-0);
+  color:var(--text-hi);
+  font-family:var(--font-body);
+  -webkit-font-smoothing:antialiased;
+  transition: background .35s ease, color .35s ease;
+  overflow-x:hidden;
+}
+::selection{ background:var(--accent); color:#fff; }
+::-webkit-scrollbar{ width:10px; height:10px; }
+::-webkit-scrollbar-track{ background:transparent; }
+::-webkit-scrollbar-thumb{ background:var(--bg-3); border-radius:8px; border:2px solid var(--bg-0); }
+::-webkit-scrollbar-thumb:hover{ background:var(--accent-dim); }
+a{ color:inherit; text-decoration:none; }
+button{ font-family:inherit; }
+h1,h2,h3,h4{ font-family:var(--font-display); letter-spacing:-0.01em; }
+
+.hidden{ display:none !important; }
+
+/* ============ Background texture (subtle grid + glow) ============ */
+.bg-field{
+  position:fixed; inset:0; z-index:-1; overflow:hidden; pointer-events:none;
+}
+.bg-field::before{
+  content:''; position:absolute; inset:0;
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 48px 48px;
+  opacity:0.35;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 90%);
+}
+.bg-field::after{
+  content:''; position:absolute; top:-20%; left:50%; transform:translateX(-50%);
+  width:900px; height:600px; border-radius:50%;
+  background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+  filter: blur(40px);
+}
+
+/* ================================================================
+   AUTH SCREEN
+   ================================================================ */
+#auth-screen{
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+  position:relative;
+}
+
+.auth-shell{
+  width:100%;
+  max-width:920px;
+  display:grid;
+  grid-template-columns: 1.1fr 1fr;
+  background:var(--bg-1);
+  border:1px solid var(--line);
+  border-radius:var(--radius-lg);
+  overflow:hidden;
+  box-shadow:var(--shadow-lift);
+  min-height:560px;
+}
+
+.auth-brandside{
+  background:
+    radial-gradient(circle at 30% 20%, var(--accent-glow), transparent 55%),
+    linear-gradient(160deg, var(--bg-2) 0%, var(--bg-0) 100%);
+  padding:48px 40px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  border-right:1px solid var(--line);
+  position:relative;
+}
+.brand-mark{
+  display:flex; align-items:center; gap:12px;
+}
+.brand-mark .logo-chip{
+  width:40px; height:40px; border-radius:10px;
+  background:linear-gradient(135deg, var(--accent), var(--accent-hi));
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-display); font-weight:700; color:#fff; font-size:18px;
+  box-shadow:0 0 0 4px var(--accent-glow);
+}
+.brand-mark .brand-text{
+  font-family:var(--font-display); font-weight:700; font-size:20px; letter-spacing:0.02em;
+}
+.brand-mark .brand-text span{ color:var(--accent); }
+
+.auth-tagline{
+  font-family:var(--font-display);
+  font-size:clamp(28px,3.2vw,38px);
+  line-height:1.15;
+  font-weight:600;
+  margin-top:40px;
+  color:var(--text-hi);
+}
+.auth-tagline em{ color:var(--accent); font-style:normal; }
+.auth-sub{
+  color:var(--text-mid);
+  font-size:14px;
+  margin-top:14px;
+  line-height:1.6;
+  max-width:34ch;
+}
+
+.auth-formside{
+  padding:48px 44px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+.auth-tabs{
+  display:flex;
+  gap:4px;
+  background:var(--bg-2);
+  border:1px solid var(--line);
+  border-radius:999px;
+  padding:4px;
+  margin-bottom:32px;
+  width:fit-content;
+}
+.auth-tab{
+  border:none; background:transparent; color:var(--text-lo);
+  font-size:13px; font-weight:600; padding:8px 18px; border-radius:999px;
+  cursor:pointer; transition:.25s;
+}
+.auth-tab.active{
+  background:var(--accent); color:#fff;
+}
+
+.auth-panel{ display:none; }
+.auth-panel.active{ display:block; animation:fadeSlide .35s ease; }
+@keyframes fadeSlide{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+
+.auth-panel h2{ font-size:22px; margin-bottom:6px; }
+.auth-panel .panel-sub{ color:var(--text-lo); font-size:13px; margin-bottom:28px; }
+
+.field-row{ display:flex; gap:16px; }
+.field-row .form-control{ flex:1; }
+
+.form-msg{
+  font-size:12.5px;
+  padding:10px 12px;
+  border-radius:8px;
+  margin-bottom:18px;
+  display:none;
+  font-weight:500;
+}
+.form-msg.show{ display:block; animation:fadeSlide .25s ease; }
+.form-msg.error{ background:rgba(229,72,77,0.12); color:#FF8A8E; border:1px solid rgba(229,72,77,0.3); }
+.form-msg.success{ background:rgba(47,191,113,0.12); color:#6EE7A8; border:1px solid rgba(47,191,113,0.3); }
+
+.auth-footnote{
+  margin-top:20px;
+  font-size:12px;
+  color:var(--text-lo);
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.auth-footnote svg{ width:14px; height:14px; flex-shrink:0; }
+
+/* ===================== form-control (adapted) ===================== */
+.form-control{
+  position:relative;
+  margin:0 0 30px;
+  width:100%;
+}
+.form-control input{
+  background-color:transparent;
+  border:0;
+  border-bottom:2px solid var(--line);
+  display:block;
+  width:100%;
+  padding:12px 2px 10px;
+  font-size:15px;
+  color:var(--text-hi);
+  font-family:var(--font-body);
+}
+.form-control input:focus,
+.form-control input:valid{
+  outline:0;
+  border-bottom-color:var(--accent);
+}
+.form-control label{
+  position:absolute;
+  top:12px;
+  left:2px;
+  pointer-events:none;
+}
+.form-control label span{
+  display:inline-block;
+  font-size:15px;
+  min-width:5px;
+  color:var(--text-lo);
+  transition:.3s cubic-bezier(0.68,-0.55,0.265,1.55);
+}
+.form-control input:focus + label span,
+.form-control input:valid + label span{
+  color:var(--accent);
+  transform:translateY(-22px) scale(0.85);
+}
+.form-control select{
+  background:transparent;
+  border:0;
+  border-bottom:2px solid var(--line);
+  width:100%;
+  padding:12px 2px 10px;
+  font-size:15px;
+  color:var(--text-hi);
+  font-family:var(--font-body);
+}
+.form-control select:focus{ outline:0; border-bottom-color:var(--accent); }
+.form-control.select-filled label span{
+  color:var(--accent);
+  transform:translateY(-22px) scale(0.85);
+}
+
+/* ===================== button (adapted, brand colors) ===================== */
+.btn{
+  position:relative;
+  width:100%;
+  height:46px;
+  background-color:var(--accent);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#fff;
+  border:none;
+  padding:12px;
+  border-radius:10px;
+  cursor:pointer;
+  font-weight:700;
+  font-size:14.5px;
+  letter-spacing:0.01em;
+  overflow:visible;
+  transition: transform .15s ease;
+  font-family:var(--font-body);
+}
+.btn::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  left:-3px; top:-2px;
+  margin:auto;
+  width:calc(100% + 6px);
+  height:calc(100% + 6px);
+  border-radius:12px;
+  background:linear-gradient(-45deg, var(--accent-hi) 0%, var(--accent) 100%);
+  z-index:-10;
+  pointer-events:none;
+  transition:all .6s cubic-bezier(.175,.885,.32,1.275);
+}
+.btn::after{
+  content:"";
+  z-index:-1;
+  position:absolute;
+  inset:0;
+  background:linear-gradient(-45deg, var(--accent-hi) 0%, var(--accent) 100%);
+  transform:translate3d(0,0,0) scale(0.9);
+  filter:blur(16px);
+  opacity:0.6;
+}
+.btn:hover::after{ filter:blur(22px); }
+.btn:hover::before{ transform:rotate(-8deg); }
+.btn:active{ transform:scale(0.98); }
+.btn.btn-ghost{
+  background:transparent;
+  border:1px solid var(--line);
+  color:var(--text-mid);
+}
+.btn.btn-ghost::before, .btn.btn-ghost::after{ display:none; }
+.btn.btn-ghost:hover{ border-color:var(--accent); color:var(--accent); }
+.btn.btn-sm{ width:auto; height:36px; padding:0 16px; font-size:13px; }
+.btn.btn-danger{ background:var(--danger); }
+.btn.btn-danger::before, .btn.btn-danger::after{ background:linear-gradient(-45deg,#c0393d,#E5484D); }
+
+/* ===================== theme switch ===================== */
+.switch{
+  position:relative;
+  display:inline-block;
+  width:52px;
+  height:30px;
+  flex-shrink:0;
+}
+.switch input{ opacity:0; width:0; height:0; position:absolute; }
+.slider{
+  position:absolute; cursor:pointer; inset:0;
+  background-color:#2a2c31;
+  transition:.4s;
+  border-radius:34px;
+  overflow:hidden;
+  border:1px solid var(--line);
+}
+.sun-moon{
+  position:absolute;
+  height:22px; width:22px;
+  left:3px; bottom:3px;
+  background-color:#FFD34D;
+  transition:.4s;
+  border-radius:50%;
+  box-shadow:0 0 8px rgba(255,211,77,0.6);
+}
+input:checked + .slider{ background-color:#12305c; }
+input:checked + .slider .sun-moon{
+  transform:translateX(22px);
+  background-color:#EAF2FF;
+  box-shadow:0 0 8px rgba(234,242,255,0.5);
+}
+.moon-dot{ opacity:0; transition:.4s; fill:#9fb4d1; position:absolute; border-radius:50%; }
+input:checked + .slider .moon-dot{ opacity:1; }
+#moon-dot-1{ width:5px; height:5px; left:6px; top:2px; }
+#moon-dot-2{ width:4px; height:4px; left:2px; top:8px; }
+
+/* ============================================================
+   TOP BAR / APP SHELL
+   ============================================================ */
+#app-shell{ min-height:100vh; }
+
+.topbar{
+  position:sticky; top:0; z-index:50;
+  height:64px;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 24px;
+  background:color-mix(in srgb, var(--bg-1) 88%, transparent);
+  backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line);
+}
+.topbar-left{ display:flex; align-items:center; gap:14px; }
+.topbar-left .brand-mark .brand-text{ font-size:17px; }
+.topbar-left .brand-mark .logo-chip{ width:34px; height:34px; font-size:15px; border-radius:8px; }
+
+.topbar-search{
+  flex:1;
+  max-width:420px;
+  margin:0 24px;
+  position:relative;
+}
+.topbar-search input{
+  width:100%;
+  background:var(--bg-2);
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:9px 14px 9px 36px;
+  color:var(--text-hi);
+  font-size:13.5px;
+}
+.topbar-search input:focus{ outline:none; border-color:var(--accent); }
+.topbar-search svg{
+  position:absolute; left:12px; top:50%; transform:translateY(-50%);
+  width:15px; height:15px; color:var(--text-lo);
+}
+.topbar-search kbd{
+  position:absolute; right:10px; top:50%; transform:translateY(-50%);
+  font-size:10.5px; color:var(--text-lo); background:var(--bg-3);
+  padding:2px 6px; border-radius:5px; border:1px solid var(--line);
+}
+
+.topbar-right{ display:flex; align-items:center; gap:16px; }
+
+.icon-btn{
+  width:36px; height:36px;
+  display:flex; align-items:center; justify-content:center;
+  background:transparent; border:1px solid transparent; border-radius:9px;
+  color:var(--text-mid); cursor:pointer; transition:.2s;
+}
+.icon-btn:hover{ background:var(--bg-2); color:var(--accent); border-color:var(--line); }
+.icon-btn svg{ width:18px; height:18px; }
+
+.user-chip{
+  display:flex; align-items:center; gap:9px;
+  padding:5px 10px 5px 5px;
+  border-radius:999px;
+  background:var(--bg-2);
+  border:1px solid var(--line);
+  cursor:pointer;
+  position:relative;
+}
+.user-chip .avatar{
+  width:28px; height:28px; border-radius:50%;
+  background:linear-gradient(135deg, var(--accent), var(--accent-hi));
+  display:flex; align-items:center; justify-content:center;
+  font-size:12px; font-weight:700; color:#fff;
+}
+.user-chip .u-name{ font-size:13px; font-weight:600; }
+.user-chip .u-role{ font-size:10px; color:var(--accent); font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
+
+.user-menu{
+  position:absolute; top:calc(100% + 8px); right:0;
+  width:220px;
+  background:var(--bg-2);
+  border:1px solid var(--line);
+  border-radius:12px;
+  box-shadow:var(--shadow-lift);
+  padding:8px;
+  display:none;
+  z-index:60;
+}
+.user-menu.open{ display:block; animation:fadeSlide .2s ease; }
+.user-menu a, .user-menu button{
+  display:flex; align-items:center; gap:10px;
+  width:100%; text-align:left;
+  padding:9px 10px; border-radius:8px;
+  background:transparent; border:none; color:var(--text-mid);
+  font-size:13px; cursor:pointer;
+}
+.user-menu a:hover, .user-menu button:hover{ background:var(--bg-3); color:var(--text-hi); }
+.user-menu svg{ width:15px; height:15px; }
+.user-menu hr{ border:none; border-top:1px solid var(--line); margin:6px 0; }
+
+/* ============================================================
+   LAYOUT: sidebar (pages/tabs like start.me) + main grid
+   ============================================================ */
+.workspace{
+  display:grid;
+  grid-template-columns: 240px 1fr;
+  min-height:calc(100vh - 64px);
+}
+
+.sidebar{
+  border-right:1px solid var(--line);
+  padding:20px 14px;
+  display:flex; flex-direction:column; gap:22px;
+  background:var(--bg-1);
+}
+.sidebar-section-title{
+  font-size:10.5px; text-transform:uppercase; letter-spacing:.08em;
+  color:var(--text-lo); font-weight:700; padding:0 8px; margin-bottom:8px;
+}
+.page-list{ display:flex; flex-direction:column; gap:2px; }
+.page-item{
+  display:flex; align-items:center; gap:10px;
+  padding:9px 10px; border-radius:8px;
+  font-size:13.5px; font-weight:500; color:var(--text-mid);
+  cursor:pointer; border:1px solid transparent;
+  transition:.15s;
+}
+.page-item .dot{ width:7px; height:7px; border-radius:50%; background:var(--text-lo); flex-shrink:0; }
+.page-item:hover{ background:var(--bg-2); color:var(--text-hi); }
+.page-item.active{ background:var(--accent-dim); color:var(--accent-hi); border-color:var(--accent); }
+.page-item.active .dot{ background:var(--accent); }
+[data-theme="light"] .page-item.active{ color:var(--accent-hi); }
+.page-item .page-name{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.page-item .page-edit-btn{
+  opacity:0; width:20px; height:20px; display:flex; align-items:center; justify-content:center;
+  border-radius:5px; color:var(--text-lo);
+}
+.page-item:hover .page-edit-btn{ opacity:1; }
+.page-item .page-edit-btn:hover{ background:var(--bg-3); color:var(--accent); }
+.page-item .page-edit-btn svg{ width:12px; height:12px; }
+
+.add-page-btn{
+  display:flex; align-items:center; gap:8px;
+  padding:9px 10px; border-radius:8px;
+  font-size:13px; color:var(--text-lo); font-weight:600;
+  background:transparent; border:1px dashed var(--line); cursor:pointer;
+  transition:.15s;
+}
+.add-page-btn:hover{ border-color:var(--accent); color:var(--accent); }
+
+.sidebar-footer{
+  margin-top:auto; padding-top:16px; border-top:1px solid var(--line);
+}
+.admin-link{
+  display:flex; align-items:center; gap:10px;
+  padding:9px 10px; border-radius:8px; font-size:13px; font-weight:600;
+  color:var(--accent); cursor:pointer;
+}
+.admin-link:hover{ background:var(--accent-dim); }
+.admin-link svg{ width:15px; height:15px; }
+
+/* ===================== main content ===================== */
+.main-area{ padding:28px 32px 60px; max-width:1400px; }
+.page-header{
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:22px;
+}
+.page-header h1{ font-size:24px; font-weight:700; }
+.page-actions{ display:flex; gap:10px; }
+
+.widget-grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap:18px;
+  align-items:start;
+}
+
+.widget{
+  background:var(--bg-1);
+  border:1px solid var(--line);
+  border-radius:var(--radius-md);
+  overflow:hidden;
+  transition:border-color .2s, transform .15s;
+}
+.widget:hover{ border-color:color-mix(in srgb, var(--accent) 40%, var(--line)); }
+.widget-head{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 14px; border-bottom:1px solid var(--line);
+  background:var(--bg-2);
+}
+.widget-head-left{ display:flex; align-items:center; gap:9px; min-width:0; }
+.widget-head-left .w-icon{
+  width:26px; height:26px; border-radius:7px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--accent-dim); color:var(--accent-hi);
+}
+.widget-head-left .w-icon svg{ width:14px; height:14px; }
+.widget-head h3{ font-size:13.5px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.widget-head-actions{ display:flex; gap:2px; flex-shrink:0; }
+.widget-head-actions button{
+  width:24px; height:24px; border:none; background:transparent; border-radius:6px;
+  color:var(--text-lo); cursor:pointer; display:flex; align-items:center; justify-content:center;
+}
+.widget-head-actions button:hover{ background:var(--bg-3); color:var(--danger); }
+.widget-head-actions button svg{ width:13px; height:13px; }
+.widget-body{ padding:12px 14px 14px; }
+
+.link-list{ display:flex; flex-direction:column; gap:1px; }
+.link-item{
+  display:flex; align-items:center; gap:10px;
+  padding:7px 6px; border-radius:6px; font-size:13px; color:var(--text-mid);
+  transition:.15s;
+}
+.link-item:hover{ background:var(--bg-2); color:var(--text-hi); }
+.link-item .favicon{
+  width:16px; height:16px; border-radius:4px; flex-shrink:0;
+  background:var(--bg-3); display:flex; align-items:center; justify-content:center;
+  font-size:9px; font-weight:700; color:var(--text-lo);
+}
+
+.note-body{
+  font-size:13px; color:var(--text-mid); line-height:1.7;
+  white-space:pre-wrap;
+}
+
+.rss-item{ padding:8px 0; border-bottom:1px solid var(--line); }
+.rss-item:last-child{ border-bottom:none; }
+.rss-item a{ font-size:13px; font-weight:600; color:var(--text-hi); }
+.rss-item .rss-meta{ font-size:11px; color:var(--text-lo); margin-top:3px; }
+
+.todo-item{ display:flex; align-items:center; gap:9px; padding:6px 2px; font-size:13px; }
+.todo-item input[type=checkbox]{ accent-color:var(--accent); width:15px; height:15px; }
+.todo-item.done span{ text-decoration:line-through; color:var(--text-lo); }
+
+.clock-widget{ text-align:center; padding:10px 0; }
+.clock-widget .time{ font-family:var(--font-mono); font-size:34px; font-weight:700; color:var(--accent); }
+.clock-widget .date{ font-size:12.5px; color:var(--text-lo); margin-top:4px; }
+
+.weather-widget{ display:flex; align-items:center; justify-content:space-between; }
+.weather-widget .temp{ font-size:32px; font-weight:700; font-family:var(--font-display); }
+.weather-widget .desc{ font-size:12px; color:var(--text-lo); }
+
+.add-widget-tile{
+  border:1.5px dashed var(--line);
+  border-radius:var(--radius-md);
+  min-height:120px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:8px; cursor:pointer; color:var(--text-lo); transition:.2s;
+}
+.add-widget-tile:hover{ border-color:var(--accent); color:var(--accent); background:var(--accent-dim); }
+.add-widget-tile svg{ width:22px; height:22px; }
+.add-widget-tile span{ font-size:12.5px; font-weight:600; }
+
+/* ===================== modal ===================== */
+.modal-backdrop{
+  position:fixed; inset:0; background:rgba(0,0,0,0.6); backdrop-filter:blur(3px);
+  display:flex; align-items:center; justify-content:center; z-index:200;
+  animation:fadeSlide .2s ease;
+  padding:20px;
+}
+.modal{
+  background:var(--bg-1); border:1px solid var(--line); border-radius:var(--radius-lg);
+  width:100%; max-width:440px; box-shadow:var(--shadow-lift);
+  max-height:88vh; overflow-y:auto;
+}
+.modal-head{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:18px 20px; border-bottom:1px solid var(--line);
+}
+.modal-head h3{ font-size:16px; }
+.modal-head button{ background:none; border:none; color:var(--text-lo); cursor:pointer; width:28px; height:28px; border-radius:7px; }
+.modal-head button:hover{ background:var(--bg-2); color:var(--text-hi); }
+.modal-body{ padding:20px; }
+.modal-body .form-control{ margin-bottom:22px; }
+.modal-foot{ padding:16px 20px; border-top:1px solid var(--line); display:flex; gap:10px; }
+
+.chip-select{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:22px; }
+.chip-opt{
+  padding:7px 14px; border-radius:999px; border:1px solid var(--line);
+  font-size:12px; font-weight:600; color:var(--text-mid); cursor:pointer; transition:.15s;
+  display:flex; align-items:center; gap:6px;
+}
+.chip-opt.selected{ background:var(--accent); border-color:var(--accent); color:#fff; }
+.chip-opt svg{ width:13px; height:13px; }
+
+/* ===================== admin panel ===================== */
+#admin-view .main-area{ max-width:1200px; }
+.admin-stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px; }
+.stat-card{
+  background:var(--bg-1); border:1px solid var(--line); border-radius:var(--radius-md);
+  padding:18px;
+}
+.stat-card .stat-label{ font-size:11.5px; color:var(--text-lo); font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
+.stat-card .stat-value{ font-size:28px; font-weight:700; font-family:var(--font-display); margin-top:6px; color:var(--accent); }
+
+.admin-table-wrap{
+  background:var(--bg-1); border:1px solid var(--line); border-radius:var(--radius-md); overflow:hidden;
+}
+table.admin-table{ width:100%; border-collapse:collapse; font-size:13px; }
+table.admin-table th{
+  text-align:left; padding:12px 14px; background:var(--bg-2); color:var(--text-lo);
+  font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:.04em;
+  border-bottom:1px solid var(--line);
+}
+table.admin-table td{ padding:12px 14px; border-bottom:1px solid var(--line); color:var(--text-mid); }
+table.admin-table tr:last-child td{ border-bottom:none; }
+table.admin-table tr:hover td{ background:var(--bg-2); color:var(--text-hi); }
+.badge{
+  display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:999px;
+  font-size:11px; font-weight:700;
+}
+.badge.owner{ background:var(--accent-dim); color:var(--accent-hi); }
+.badge.user{ background:var(--bg-3); color:var(--text-mid); }
+.badge.active{ background:rgba(47,191,113,0.15); color:var(--success); }
+
+.log-feed{ display:flex; flex-direction:column; gap:0; margin-top:24px; }
+.log-row{
+  display:flex; gap:12px; padding:11px 4px; border-bottom:1px solid var(--line); font-size:12.5px;
+}
+.log-row .log-dot{ width:7px; height:7px; border-radius:50%; background:var(--accent); margin-top:5px; flex-shrink:0; }
+.log-row .log-text{ color:var(--text-mid); }
+.log-row .log-text b{ color:var(--text-hi); }
+.log-row .log-time{ margin-left:auto; color:var(--text-lo); font-size:11px; white-space:nowrap; }
+
+/* ===================== terminal loader (adapted) ===================== */
+@keyframes blinkCursor{ 50%{ border-right-color:transparent; } }
+@keyframes typeAndDelete{
+  0%,10%{ width:0; }
+  45%,55%{ width:7.5em; }
+  90%,100%{ width:0; }
+}
+#boot-screen{
+  position:fixed; inset:0; z-index:500;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--bg-0);
+  flex-direction:column; gap:18px;
+}
+.terminal-loader{
+  border:0.1em solid var(--line);
+  background-color:#0f1012;
+  color:var(--accent);
+  font-family:var(--font-mono);
+  font-size:1em;
+  padding:1.6em 1em 1.2em;
+  width:14em;
+  box-shadow:0 4px 20px rgba(0,0,0,0.5);
+  border-radius:8px;
+  position:relative;
+  overflow:hidden;
+  box-sizing:border-box;
+}
+.terminal-header{
+  position:absolute; top:0; left:0; right:0; height:1.6em;
+  background-color:#1b1c1f;
+  padding:0 .5em; box-sizing:border-box;
+}
+.terminal-controls{ float:right; margin-top:.5em; }
+.control{ display:inline-block; width:.6em; height:.6em; margin-left:.4em; border-radius:50%; background-color:#555; }
+.control.close{ background-color:#e33; }
+.control.minimize{ background-color:#ee0; }
+.control.maximize{ background-color:#0b0; }
+.terminal-title{ float:left; line-height:1.6em; color:#ccc; font-size:.85em; }
+.term-text{
+  display:inline-block; white-space:nowrap; overflow:hidden;
+  border-right:.2em solid var(--accent);
+  animation: typeAndDelete 3.2s steps(14) infinite, blinkCursor .5s step-end infinite alternate;
+  margin-top:1.4em; font-size:.95em;
+}
+.boot-label{ color:var(--text-lo); font-size:12px; letter-spacing:.05em; }
+
+/* ===================== toast ===================== */
+#toast-stack{ position:fixed; bottom:22px; right:22px; z-index:400; display:flex; flex-direction:column; gap:10px; }
+.toast{
+  background:var(--bg-2); border:1px solid var(--line); border-left:3px solid var(--accent);
+  border-radius:8px; padding:12px 16px; font-size:13px; color:var(--text-hi);
+  box-shadow:var(--shadow-lift); min-width:220px; animation:fadeSlide .25s ease;
+}
+.toast.error{ border-left-color:var(--danger); }
+
+/* ===================== responsive ===================== */
+@media (max-width: 860px){
+  .auth-shell{ grid-template-columns:1fr; }
+  .auth-brandside{ display:none; }
+  .workspace{ grid-template-columns:1fr; }
+  .sidebar{ display:none; }
+  .admin-stats{ grid-template-columns:repeat(2,1fr); }
+  .topbar-search{ display:none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     BOOT SCREEN
+     ============================================================ -->
+<div id="boot-screen">
+  <div class="terminal-loader">
+    <div class="terminal-header">
+      <div class="terminal-title">mkc-tools.sh</div>
+      <div class="terminal-controls">
+        <span class="control close"></span>
+        <span class="control minimize"></span>
+        <span class="control maximize"></span>
+      </div>
+    </div>
+    <div class="term-text">booting MKC...</div>
+  </div>
+  <div class="boot-label">กำลังโหลด Workspace Hub…</div>
+</div>
+
+<div class="bg-field"></div>
+<div id="toast-stack"></div>
+
+<!-- ============================================================
+     AUTH SCREEN
+     ============================================================ -->
+<div id="auth-screen" class="hidden">
+  <div class="auth-shell">
+    <div class="auth-brandside">
+      <div>
+        <div class="brand-mark">
+          <div class="logo-chip">M</div>
+          <div class="brand-text">MKC <span>TOOLS</span></div>
+        </div>
+        <div class="auth-tagline">Workspace hub<br>สำหรับ<em> ทีมของคุณ</em> โดยเฉพาะ</div>
+        <div class="auth-sub">รวมลิงก์ เครื่องมือ และข้อมูลที่ทีมใช้ทุกวันไว้ในหน้าเดียว เข้าถึงได้เฉพาะคนในองค์กรณ์เท่านั้น</div>
+      </div>
+      <div class="auth-sub" style="font-size:11.5px; opacity:.7;">
+        Internal system · ห้ามเผยแพร่ข้อมูลการเข้าถึงสู่ภายนอก
+      </div>
+    </div>
+
+    <div class="auth-formside">
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-tab="login" onclick="switchAuthTab('login')">เข้าสู่ระบบ</button>
+        <button class="auth-tab" data-tab="register" onclick="switchAuthTab('register')">สมัครสมาชิก</button>
+      </div>
+
+      <!-- LOGIN PANEL -->
+      <div class="auth-panel active" id="panel-login">
+        <h2>เข้าสู่ระบบ</h2>
+        <div class="panel-sub">ใช้บัญชีที่แอดมินอนุมัติ หรือบัญชีที่คุณสมัครไว้</div>
+        <div class="form-msg" id="login-msg"></div>
+        <form id="login-form" onsubmit="return handleLogin(event)">
+          <div class="form-control">
+            <input type="text" id="login-username" required autocomplete="username">
+            <label><span>Username</span></label>
+          </div>
+          <div class="form-control">
+            <input type="password" id="login-password" required autocomplete="current-password">
+            <label><span>Password</span></label>
+          </div>
+          <button type="submit" class="btn">เข้าสู่ระบบ</button>
+        </form>
+        <div class="auth-footnote">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>
+          เชื่อมต่อแบบเข้ารหัส และมีการบันทึก log การเข้าใช้งานทุกครั้ง
+        </div>
+      </div>
+
+      <!-- REGISTER PANEL -->
+      <div class="auth-panel" id="panel-register">
+        <h2>สมัครสมาชิกใหม่</h2>
+        <div class="panel-sub">กรอกข้อมูลเพื่อขอเข้าใช้งาน Workspace ขององค์กรณ์</div>
+        <div class="form-msg" id="register-msg"></div>
+        <form id="register-form" onsubmit="return handleRegister(event)">
+          <div class="field-row">
+            <div class="form-control">
+              <input type="text" id="reg-firstname" required>
+              <label><span>ชื่อ</span></label>
+            </div>
+            <div class="form-control">
+              <input type="text" id="reg-lastname" required>
+              <label><span>นามสกุล</span></label>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="form-control">
+              <input type="text" id="reg-position" required>
+              <label><span>ตำแหน่ง</span></label>
+            </div>
+            <div class="form-control">
+              <input type="text" id="reg-department" required>
+              <label><span>แผนก</span></label>
+            </div>
+          </div>
+          <div class="form-control">
+            <input type="text" id="reg-username" required minlength="3">
+            <label><span>ตั้งชื่อผู้ใช้ (Username)</span></label>
+          </div>
+          <div class="field-row">
+            <div class="form-control">
+              <input type="password" id="reg-password" required minlength="4">
+              <label><span>ตั้งรหัสผ่าน</span></label>
+            </div>
+            <div class="form-control">
+              <input type="password" id="reg-password2" required minlength="4">
+              <label><span>ยืนยันรหัสผ่าน</span></label>
+            </div>
+          </div>
+          <button type="submit" class="btn">สมัครสมาชิก</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     APP SHELL
+     ============================================================ -->
+<div id="app-shell" class="hidden">
+
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="brand-mark">
+        <div class="logo-chip">M</div>
+        <div class="brand-text">MKC <span style="color:var(--accent)">TOOLS</span></div>
+      </div>
+    </div>
+
+    <div class="topbar-search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="global-search" placeholder="ค้นหาลิงก์ วิดเจ็ต หรือหน้า…" oninput="handleGlobalSearch(event)">
+      <kbd>/</kbd>
+    </div>
+
+    <div class="topbar-right">
+      <label class="switch" title="สลับโหมด Dark / Light">
+        <input type="checkbox" id="theme-toggle" onchange="toggleTheme()">
+        <span class="slider round">
+          <span class="sun-moon">
+            <span class="moon-dot" id="moon-dot-1"></span>
+            <span class="moon-dot" id="moon-dot-2"></span>
+          </span>
+        </span>
+      </label>
+
+      <div class="user-chip" id="user-chip" onclick="toggleUserMenu()">
+        <div class="avatar" id="user-avatar">?</div>
+        <div>
+          <div class="u-name" id="user-name">-</div>
+          <div class="u-role" id="user-role">-</div>
+        </div>
+        <div class="user-menu" id="user-menu">
+          <a onclick="openProfileModal()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
+            โปรไฟล์ของฉัน
+          </a>
+          <a id="admin-menu-link" class="hidden" onclick="showAdminView()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 3 6v6c0 5 4 9 9 10 5-1 9-5 9-10V6l-9-4Z"/></svg>
+            แผงควบคุมแอดมิน
+          </a>
+          <hr>
+          <button onclick="handleLogout()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+            ออกจากระบบ
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============== WORKSPACE VIEW ============== -->
+  <div class="workspace" id="workspace-view">
+    <div class="sidebar">
+      <div>
+        <div class="sidebar-section-title">หน้าของฉัน</div>
+        <div class="page-list" id="page-list"></div>
+        <div style="margin-top:8px;">
+          <button class="add-page-btn" onclick="openPageModal()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            เพิ่มหน้าใหม่
+          </button>
+        </div>
+      </div>
+
+      <div class="sidebar-footer" id="admin-sidebar-link-wrap">
+        <div class="admin-link hidden" id="admin-sidebar-link" onclick="showAdminView()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 3 6v6c0 5 4 9 9 10 5-1 9-5 9-10V6l-9-4Z"/></svg>
+          แผงควบคุมแอดมิน
+        </div>
+      </div>
+    </div>
+
+    <div class="main-area">
+      <div class="page-header">
+        <h1 id="current-page-title">หน้าหลัก</h1>
+        <div class="page-actions">
+          <button class="btn btn-ghost btn-sm" onclick="openWidgetModal()">+ เพิ่มวิดเจ็ต</button>
+        </div>
+      </div>
+      <div class="widget-grid" id="widget-grid"></div>
+    </div>
+  </div>
+
+  <!-- ============== ADMIN VIEW ============== -->
+  <div class="workspace hidden" id="admin-view">
+    <div class="sidebar">
+      <div>
+        <div class="sidebar-section-title">แผงควบคุม</div>
+        <div class="page-list">
+          <div class="page-item active"><span class="dot"></span><span class="page-name">ภาพรวม & Log</span></div>
+        </div>
+      </div>
+      <div class="sidebar-footer">
+        <div class="admin-link" onclick="showWorkspaceView()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+          กลับไป Workspace
+        </div>
+      </div>
+    </div>
+    <div class="main-area">
+      <div class="page-header">
+        <h1>แผงควบคุมแอดมิน</h1>
+      </div>
+
+      <div class="admin-stats">
+        <div class="stat-card">
+          <div class="stat-label">ผู้ใช้ทั้งหมด</div>
+          <div class="stat-value" id="stat-total-users">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">ออนไลน์ตอนนี้</div>
+          <div class="stat-value" id="stat-online">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">แผนกทั้งหมด</div>
+          <div class="stat-value" id="stat-departments">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">การเข้าสู่ระบบวันนี้</div>
+          <div class="stat-value" id="stat-logins-today">0</div>
+        </div>
+      </div>
+
+      <h3 style="font-size:15px; margin-bottom:12px;">รายชื่อผู้ใช้งานที่ลงทะเบียน</h3>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>ชื่อ-นามสกุล</th>
+              <th>Username</th>
+              <th>ตำแหน่ง</th>
+              <th>แผนก</th>
+              <th>สิทธิ์</th>
+              <th>สมัครเมื่อ</th>
+            </tr>
+          </thead>
+          <tbody id="admin-users-table"></tbody>
+        </table>
+      </div>
+
+      <h3 style="font-size:15px; margin:26px 0 4px;">บันทึกการเข้าใช้งานล่าสุด (Access Log)</h3>
+      <div class="log-feed" id="admin-log-feed"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODALS
+     ============================================================ -->
+<div class="modal-backdrop hidden" id="page-modal-backdrop">
+  <div class="modal">
+    <div class="modal-head"><h3>เพิ่มหน้าใหม่</h3><button onclick="closeModal('page-modal-backdrop')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-control">
+        <input type="text" id="new-page-name" required>
+        <label><span>ชื่อหน้า เช่น Marketing, IT, HR</span></label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('page-modal-backdrop')">ยกเลิก</button>
+      <button class="btn" onclick="createPage()">สร้างหน้า</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop hidden" id="widget-modal-backdrop">
+  <div class="modal">
+    <div class="modal-head"><h3>เพิ่มวิดเจ็ต</h3><button onclick="closeModal('widget-modal-backdrop')">✕</button></div>
+    <div class="modal-body">
+      <div class="chip-select" id="widget-type-select">
+        <div class="chip-opt selected" data-type="links">🔗 ลิงก์ลัด</div>
+        <div class="chip-opt" data-type="note">📝 โน้ต</div>
+        <div class="chip-opt" data-type="todo">✅ เช็คลิสต์</div>
+        <div class="chip-opt" data-type="clock">🕒 นาฬิกา</div>
+        <div class="chip-opt" data-type="rss">📰 ประกาศ</div>
+      </div>
+      <div class="form-control">
+        <input type="text" id="new-widget-title" required>
+        <label><span>ชื่อวิดเจ็ต</span></label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('widget-modal-backdrop')">ยกเลิก</button>
+      <button class="btn" onclick="createWidget()">เพิ่มวิดเจ็ต</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop hidden" id="link-modal-backdrop">
+  <div class="modal">
+    <div class="modal-head"><h3>เพิ่มลิงก์</h3><button onclick="closeModal('link-modal-backdrop')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-control">
+        <input type="text" id="new-link-name" required>
+        <label><span>ชื่อลิงก์</span></label>
+      </div>
+      <div class="form-control">
+        <input type="text" id="new-link-url" required>
+        <label><span>URL (เช่น https://...)</span></label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('link-modal-backdrop')">ยกเลิก</button>
+      <button class="btn" onclick="addLinkToWidget()">เพิ่ม</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop hidden" id="profile-modal-backdrop">
+  <div class="modal">
+    <div class="modal-head"><h3>โปรไฟล์ของฉัน</h3><button onclick="closeModal('profile-modal-backdrop')">✕</button></div>
+    <div class="modal-body" id="profile-modal-body"></div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   MKC TOOLS — App logic
+   NOTE (สำคัญ): เดโมนี้เก็บข้อมูลผู้ใช้/รหัสผ่านใน localStorage ของเบราว์เซอร์
+   เพื่อการสาธิตเท่านั้น ไม่ใช่การเก็บรหัสผ่านแบบปลอดภัย (ไม่ได้ hash)
+   สำหรับใช้งานจริงในองค์กรณ์ ต้องมี backend + database + hashing (ดูคำอธิบายท้ายบทสนทนา)
+   ============================================================ */
+
+const OWNER_ACCOUNT = { username: 'maiaek', password: '1542' };
+const STORAGE_KEYS = {
+  users: 'mkc_users',
+  logs: 'mkc_logs',
+  session: 'mkc_session',
+  pages: 'mkc_pages_',
+  theme: 'mkc_theme'
+};
+
+/* ---------- storage helpers ---------- */
+function loadUsers(){ return JSON.parse(localStorage.getItem(STORAGE_KEYS.users) || '[]'); }
+function saveUsers(u){ localStorage.setItem(STORAGE_KEYS.users, JSON.stringify(u)); }
+function loadLogs(){ return JSON.parse(localStorage.getItem(STORAGE_KEYS.logs) || '[]'); }
+function saveLogs(l){ localStorage.setItem(STORAGE_KEYS.logs, JSON.stringify(l)); }
+function addLog(username, action){
+  const logs = loadLogs();
+  logs.unshift({ username, action, time: new Date().toISOString() });
+  saveLogs(logs.slice(0, 200));
+}
+function getSession(){ return JSON.parse(localStorage.getItem(STORAGE_KEYS.session) || 'null'); }
+function setSession(s){ localStorage.setItem(STORAGE_KEYS.session, JSON.stringify(s)); }
+function clearSession(){ localStorage.removeItem(STORAGE_KEYS.session); }
+
+/* ---------- boot ---------- */
+window.addEventListener('DOMContentLoaded', () => {
+  initTheme();
+  setTimeout(() => {
+    document.getElementById('boot-screen').style.display = 'none';
+    const session = getSession();
+    if (session) {
+      enterApp(session);
+    } else {
+      document.getElementById('auth-screen').classList.remove('hidden');
+    }
+  }, 1400);
+
+  document.addEventListener('click', (e) => {
+    const menu = document.getElementById('user-menu');
+    const chip = document.getElementById('user-chip');
+    if (menu && chip && !chip.contains(e.target)) menu.classList.remove('open');
+  });
+});
+
+/* ---------- theme ---------- */
+function initTheme(){
+  const saved = localStorage.getItem(STORAGE_KEYS.theme) || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  document.getElementById('theme-toggle').checked = (saved === 'light');
+}
+function toggleTheme(){
+  const isLight = document.getElementById('theme-toggle').checked;
+  const theme = isLight ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem(STORAGE_KEYS.theme, theme);
+}
+
+/* ---------- auth tabs ---------- */
+function switchAuthTab(tab){
+  document.querySelectorAll('.auth-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.getElementById('panel-login').classList.toggle('active', tab === 'login');
+  document.getElementById('panel-register').classList.toggle('active', tab === 'register');
+}
+
+function showFormMsg(id, text, type){
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = 'form-msg show ' + type;
+}
+
+/* ---------- basic client-side hardening helpers ----------
+   จำกัดความพยายาม login ผิดซ้ำ ๆ ในฝั่ง client (rate-limit เบื้องต้น)
+   หมายเหตุ: นี่ป้องกันได้แค่ผิวเผิน ของจริงต้องทำที่ backend/WAF
+------------------------------------------------------------- */
+let loginAttempts = 0;
+let loginLockUntil = 0;
+
+function sanitize(str){
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function handleLogin(e){
+  e.preventDefault();
+  const now = Date.now();
+  if (now < loginLockUntil) {
+    showFormMsg('login-msg', `พยายามเข้าสู่ระบบผิดหลายครั้ง กรุณารอ ${Math.ceil((loginLockUntil-now)/1000)} วินาที`, 'error');
+    return false;
+  }
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+
+  // owner login
+  if (username === OWNER_ACCOUNT.username && password === OWNER_ACCOUNT.password) {
+    const session = { username, role: 'owner', firstname: 'Owner', lastname: 'MKC', position: 'Administrator', department: 'MKC TOOLS' };
+    setSession(session);
+    addLog(username, 'เข้าสู่ระบบสำเร็จ (Owner)');
+    loginAttempts = 0;
+    enterApp(session);
+    return false;
+  }
+
+  const users = loadUsers();
+  const found = users.find(u => u.username === username && u.password === password);
+  if (found) {
+    const session = { username: found.username, role: 'user', firstname: found.firstname, lastname: found.lastname, position: found.position, department: found.department };
+    setSession(session);
+    addLog(username, 'เข้าสู่ระบบสำเร็จ');
+    loginAttempts = 0;
+    enterApp(session);
+    return false;
+  }
+
+  loginAttempts++;
+  addLog(username || '(ไม่ระบุ)', 'พยายามเข้าสู่ระบบล้มเหลว');
+  if (loginAttempts >= 5) {
+    loginLockUntil = now + 30000;
+    showFormMsg('login-msg', 'พยายามผิดครบ 5 ครั้ง ระบบล็อกชั่วคราว 30 วินาที', 'error');
+  } else {
+    showFormMsg('login-msg', 'Username หรือ Password ไม่ถูกต้อง', 'error');
+  }
+  return false;
+}
+
+function handleRegister(e){
+  e.preventDefault();
+  const firstname = sanitize(document.getElementById('reg-firstname').value.trim());
+  const lastname = sanitize(document.getElementById('reg-lastname').value.trim());
+  const position = sanitize(document.getElementById('reg-position').value.trim());
+  const department = sanitize(document.getElementById('reg-department').value.trim());
+  const username = document.getElementById('reg-username').value.trim();
+  const password = document.getElementById('reg-password').value;
+  const password2 = document.getElementById('reg-password2').value;
+
+  if (username === OWNER_ACCOUNT.username) {
+    showFormMsg('register-msg', 'ชื่อผู้ใช้นี้ถูกสงวนไว้ กรุณาตั้งชื่ออื่น', 'error');
+    return false;
+  }
+  if (password !== password2) {
+    showFormMsg('register-msg', 'รหัสผ่านทั้งสองช่องไม่ตรงกัน', 'error');
+    return false;
+  }
+  if (!/^[a-zA-Z0-9_.]{3,20}$/.test(username)) {
+    showFormMsg('register-msg', 'Username ต้องเป็นตัวอักษร/ตัวเลข 3-20 ตัว', 'error');
+    return false;
+  }
+
+  const users = loadUsers();
+  if (users.some(u => u.username === username)) {
+    showFormMsg('register-msg', 'มีชื่อผู้ใช้นี้อยู่แล้ว กรุณาเลือกชื่ออื่น', 'error');
+    return false;
+  }
+
+  const newUser = { firstname, lastname, position, department, username, password, createdAt: new Date().toISOString() };
+  users.push(newUser);
+  saveUsers(users);
+  addLog(username, `สมัครสมาชิกใหม่ (${firstname} ${lastname} · ${department})`);
+
+  showFormMsg('register-msg', 'สมัครสมาชิกสำเร็จ! กำลังพาไปหน้าเข้าสู่ระบบ…', 'success');
+  document.getElementById('register-form').reset();
+  setTimeout(() => {
+    switchAuthTab('login');
+    document.getElementById('login-username').value = username;
+  }, 1200);
+  return false;
+}
+
+function handleLogout(){
+  const session = getSession();
+  if (session) addLog(session.username, 'ออกจากระบบ');
+  clearSession();
+  location.reload();
+}
+
+/* ---------- enter app ---------- */
+function enterApp(session){
+  document.getElementById('auth-screen').classList.add('hidden');
+  document.getElementById('app-shell').classList.remove('hidden');
+
+  document.getElementById('user-name').textContent = `${session.firstname} ${session.lastname}`;
+  document.getElementById('user-role').textContent = session.role === 'owner' ? 'OWNER' : session.department || 'USER';
+  document.getElementById('user-avatar').textContent = (session.firstname || session.username || '?').charAt(0).toUpperCase();
+
+  if (session.role === 'owner') {
+    document.getElementById('admin-menu-link').classList.remove('hidden');
+    document.getElementById('admin-sidebar-link').classList.remove('hidden');
+  }
+
+  initPages();
+  renderPageList();
+  renderCurrentPage();
+}
+
+function toggleUserMenu(){
+  document.getElementById('user-menu').classList.toggle('open');
+}
+
+/* ============================================================
+   PAGES + WIDGETS (per-user, start.me-style tabs)
+   ============================================================ */
+let currentPageId = null;
+
+function pagesKey(){
+  const s = getSession();
+  return STORAGE_KEYS.pages + (s ? s.username : 'guest');
+}
+function loadPages(){ return JSON.parse(localStorage.getItem(pagesKey()) || 'null'); }
+function savePages(p){ localStorage.setItem(pagesKey(), JSON.stringify(p)); }
+
+function initPages(){
+  let pages = loadPages();
+  if (!pages || !pages.length) {
+    pages = [
+      {
+        id: 'home', name: 'หน้าหลัก',
+        widgets: [
+          { id: 'w1', type: 'links', title: 'ลิงก์ด่วน', items: [
+            { name: 'Google Drive', url: 'https://drive.google.com' },
+            { name: 'Gmail', url: 'https://mail.google.com' },
+            { name: 'Company Intranet', url: 'https://example.com' }
+          ]},
+          { id: 'w2', type: 'clock', title: 'เวลาปัจจุบัน' },
+          { id: 'w3', type: 'note', title: 'ประกาศจากทีม', content: 'ยินดีต้อนรับสู่ MKC TOOLS 🎉\nแก้ไขโน้ตนี้ได้จากปุ่มแก้ไขในวิดเจ็ต' },
+          { id: 'w4', type: 'todo', title: 'สิ่งที่ต้องทำวันนี้', items: [
+            { text: 'ตรวจสอบอีเมล', done: false },
+            { text: 'ประชุมทีมตอนบ่าย', done: false }
+          ]}
+        ]
+      }
+    ];
+    savePages(pages);
+  }
+  currentPageId = pages[0].id;
+}
+
+function renderPageList(){
+  const pages = loadPages();
+  const list = document.getElementById('page-list');
+  list.innerHTML = pages.map(p => `
+    <div class="page-item ${p.id === currentPageId ? 'active' : ''}" onclick="selectPage('${p.id}')">
+      <span class="dot"></span>
+      <span class="page-name">${escapeHtml(p.name)}</span>
+      ${p.id !== 'home' ? `<span class="page-edit-btn" onclick="event.stopPropagation(); deletePage('${p.id}')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </span>` : ''}
+    </div>
+  `).join('');
+}
+
+function selectPage(id){
+  currentPageId = id;
+  renderPageList();
+  renderCurrentPage();
+}
+
+function openPageModal(){ document.getElementById('page-modal-backdrop').classList.remove('hidden'); }
+function createPage(){
+  const name = document.getElementById('new-page-name').value.trim();
+  if (!name) return;
+  const pages = loadPages();
+  const id = 'p' + Date.now();
+  pages.push({ id, name, widgets: [] });
+  savePages(pages);
+  currentPageId = id;
+  document.getElementById('new-page-name').value = '';
+  closeModal('page-modal-backdrop');
+  renderPageList();
+  renderCurrentPage();
+  toast('สร้างหน้า "' + name + '" แล้ว');
+}
+function deletePage(id){
+  if (!confirm('ลบหน้านี้และวิดเจ็ตทั้งหมดในหน้านี้?')) return;
+  let pages = loadPages().filter(p => p.id !== id);
+  savePages(pages);
+  currentPageId = pages[0].id;
+  renderPageList();
+  renderCurrentPage();
+}
+
+function renderCurrentPage(){
+  const pages = loadPages();
+  const page = pages.find(p => p.id === currentPageId) || pages[0];
+  document.getElementById('current-page-title').textContent = page.name;
+  const grid = document.getElementById('widget-grid');
+  grid.innerHTML = page.widgets.map(w => renderWidget(w)).join('') + `
+    <div class="add-widget-tile" onclick="openWidgetModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+      <span>เพิ่มวิดเจ็ตใหม่</span>
+    </div>
+  `;
+  startClocks();
+}
+
+const WIDGET_ICONS = {
+  links: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11.5 4.5"/><path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07l1.36-1.36"/></svg>',
+  note: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h5"/></svg>',
+  todo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
+  clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
+  rss: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>'
+};
+
+function renderWidget(w){
+  let body = '';
+  if (w.type === 'links') {
+    body = `<div class="link-list">` +
+      (w.items||[]).map((it,i) => `
+        <a class="link-item" href="${escapeAttr(it.url)}" target="_blank" rel="noopener">
+          <span class="favicon">${escapeHtml((it.name||'?').charAt(0).toUpperCase())}</span>
+          <span>${escapeHtml(it.name)}</span>
+        </a>`).join('') +
+      `<div class="link-item" style="cursor:pointer;color:var(--accent);" onclick="openLinkModal('${w.id}')">+ เพิ่มลิงก์</div>
+      </div>`;
+  } else if (w.type === 'note') {
+    body = `<div class="note-body" contenteditable="true" onblur="updateNote('${w.id}', this.innerText)">${escapeHtml(w.content||'')}</div>`;
+  } else if (w.type === 'todo') {
+    body = (w.items||[]).map((it,i) => `
+      <div class="todo-item ${it.done?'done':''}">
+        <input type="checkbox" ${it.done?'checked':''} onchange="toggleTodo('${w.id}', ${i})">
+        <span>${escapeHtml(it.text)}</span>
+      </div>`).join('') + `
+      <div style="display:flex; gap:6px; margin-top:8px;">
+        <input type="text" placeholder="เพิ่มรายการ..." style="flex:1; background:var(--bg-2); border:1px solid var(--line); border-radius:6px; padding:6px 8px; color:var(--text-hi); font-size:12.5px;"
+          onkeydown="if(event.key==='Enter'){addTodo('${w.id}', this.value); this.value='';}">
+      </div>`;
+  } else if (w.type === 'clock') {
+    body = `<div class="clock-widget" data-clock="${w.id}">
+      <div class="time">--:--:--</div>
+      <div class="date">-</div>
+    </div>`;
+  } else if (w.type === 'rss') {
+    body = `<div class="rss-item"><a href="#">อัปเดตนโยบายการทำงานใหม่ประจำไตรมาส</a><div class="rss-meta">ทีม HR · วันนี้</div></div>
+    <div class="rss-item"><a href="#">ระบบจะปิดปรับปรุงคืนวันเสาร์ 23:00</a><div class="rss-meta">ทีม IT · เมื่อวาน</div></div>`;
+  }
+
+  return `
+    <div class="widget" data-widget-id="${w.id}">
+      <div class="widget-head">
+        <div class="widget-head-left">
+          <div class="w-icon">${WIDGET_ICONS[w.type] || ''}</div>
+          <h3>${escapeHtml(w.title)}</h3>
+        </div>
+        <div class="widget-head-actions">
+          <button onclick="deleteWidget('${w.id}')" title="ลบวิดเจ็ต">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6h12Z"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="widget-body">${body}</div>
+    </div>
+  `;
+}
+
+function getPageAndWidget(widgetId){
+  const pages = loadPages();
+  const page = pages.find(p => p.id === currentPageId);
+  const widget = page.widgets.find(w => w.id === widgetId);
+  return { pages, page, widget };
+}
+
+function updateNote(widgetId, text){
+  const { pages, widget } = getPageAndWidget(widgetId);
+  widget.content = text;
+  savePages(pages);
+}
+function toggleTodo(widgetId, idx){
+  const { pages, widget } = getPageAndWidget(widgetId);
+  widget.items[idx].done = !widget.items[idx].done;
+  savePages(pages);
+  renderCurrentPage();
+}
+function addTodo(widgetId, text){
+  if (!text.trim()) return;
+  const { pages, widget } = getPageAndWidget(widgetId);
+  widget.items.push({ text: sanitize(text.trim()), done: false });
+  savePages(pages);
+  renderCurrentPage();
+}
+function deleteWidget(widgetId){
+  if (!confirm('ลบวิดเจ็ตนี้?')) return;
+  const { pages, page } = getPageAndWidget(widgetId);
+  page.widgets = page.widgets.filter(w => w.id !== widgetId);
+  savePages(pages);
+  renderCurrentPage();
+}
+
+let pendingWidgetType = 'links';
+function openWidgetModal(){
+  document.querySelectorAll('#widget-type-select .chip-opt').forEach(c => {
+    c.classList.toggle('selected', c.dataset.type === 'links');
+    c.onclick = () => {
+      document.querySelectorAll('#widget-type-select .chip-opt').forEach(x => x.classList.remove('selected'));
+      c.classList.add('selected');
+      pendingWidgetType = c.dataset.type;
+    };
+  });
+  pendingWidgetType = 'links';
+  document.getElementById('widget-modal-backdrop').classList.remove('hidden');
+}
+function createWidget(){
+  const title = document.getElementById('new-widget-title').value.trim();
+  if (!title) return;
+  const pages = loadPages();
+  const page = pages.find(p => p.id === currentPageId);
+  const w = { id: 'w' + Date.now(), type: pendingWidgetType, title };
+  if (w.type === 'links') w.items = [];
+  if (w.type === 'todo') w.items = [];
+  if (w.type === 'note') w.content = '';
+  page.widgets.push(w);
+  savePages(pages);
+  document.getElementById('new-widget-title').value = '';
+  closeModal('widget-modal-backdrop');
+  renderCurrentPage();
+  toast('เพิ่มวิดเจ็ต "' + title + '" แล้ว');
+}
+
+let pendingLinkWidgetId = null;
+function openLinkModal(widgetId){
+  pendingLinkWidgetId = widgetId;
+  document.getElementById('link-modal-backdrop').classList.remove('hidden');
+}
+function addLinkToWidget(){
+  const name = document.getElementById('new-link-name').value.trim();
+  let url = document.getElementById('new-link-url').value.trim();
+  if (!name || !url) return;
+  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+  const { pages, widget } = getPageAndWidget(pendingLinkWidgetId);
+  widget.items.push({ name: sanitize(name), url });
+  savePages(pages);
+  document.getElementById('new-link-name').value = '';
+  document.getElementById('new-link-url').value = '';
+  closeModal('link-modal-backdrop');
+  renderCurrentPage();
+}
+
+function startClocks(){
+  document.querySelectorAll('[data-clock]').forEach(el => {
+    function tick(){
+      const now = new Date();
+      el.querySelector('.time').textContent = now.toLocaleTimeString('th-TH');
+      el.querySelector('.date').textContent = now.toLocaleDateString('th-TH', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+    }
+    tick();
+    if (!el.dataset.ticking) {
+      el.dataset.ticking = '1';
+      setInterval(tick, 1000);
+    }
+  });
+}
+
+/* ---------- modal helpers ---------- */
+function closeModal(id){ document.getElementById(id).classList.add('hidden'); }
+
+/* ---------- search ---------- */
+function handleGlobalSearch(e){
+  const q = e.target.value.toLowerCase();
+  document.querySelectorAll('.widget').forEach(w => {
+    const match = w.innerText.toLowerCase().includes(q);
+    w.style.display = (q === '' || match) ? '' : 'none';
+  });
+}
+
+/* ---------- profile modal ---------- */
+function openProfileModal(){
+  const s = getSession();
+  document.getElementById('profile-modal-body').innerHTML = `
+    <div style="display:flex; flex-direction:column; gap:14px; font-size:13.5px;">
+      <div><div style="color:var(--text-lo); font-size:11px; text-transform:uppercase;">ชื่อ-นามสกุล</div><div>${escapeHtml(s.firstname)} ${escapeHtml(s.lastname)}</div></div>
+      <div><div style="color:var(--text-lo); font-size:11px; text-transform:uppercase;">Username</div><div>${escapeHtml(s.username)}</div></div>
+      <div><div style="color:var(--text-lo); font-size:11px; text-transform:uppercase;">ตำแหน่ง</div><div>${escapeHtml(s.position||'-')}</div></div>
+      <div><div style="color:var(--text-lo); font-size:11px; text-transform:uppercase;">แผนก</div><div>${escapeHtml(s.department||'-')}</div></div>
+      <div><div style="color:var(--text-lo); font-size:11px; text-transform:uppercase;">สิทธิ์การใช้งาน</div><div><span class="badge ${s.role==='owner'?'owner':'user'}">${s.role==='owner'?'OWNER / ADMIN':'USER'}</span></div></div>
+    </div>
+  `;
+  document.getElementById('profile-modal-backdrop').classList.remove('hidden');
+  document.getElementById('user-menu').classList.remove('open');
+}
+
+/* ============================================================
+   ADMIN VIEW
+   ============================================================ */
+function showAdminView(){
+  document.getElementById('workspace-view').classList.add('hidden');
+  document.getElementById('admin-view').classList.remove('hidden');
+  document.getElementById('user-menu').classList.remove('open');
+  renderAdminView();
+}
+function showWorkspaceView(){
+  document.getElementById('admin-view').classList.add('hidden');
+  document.getElementById('workspace-view').classList.remove('hidden');
+}
+
+function renderAdminView(){
+  const users = loadUsers();
+  const logs = loadLogs();
+
+  document.getElementById('stat-total-users').textContent = users.length;
+  document.getElementById('stat-departments').textContent = new Set(users.map(u=>u.department)).size;
+  const today = new Date().toDateString();
+  document.getElementById('stat-logins-today').textContent = logs.filter(l => l.action.includes('เข้าสู่ระบบสำเร็จ') && new Date(l.time).toDateString() === today).length;
+  document.getElementById('stat-online').textContent = getSession() ? 1 : 0;
+
+  document.getElementById('admin-users-table').innerHTML = users.map(u => `
+    <tr>
+      <td>${escapeHtml(u.firstname)} ${escapeHtml(u.lastname)}</td>
+      <td>${escapeHtml(u.username)}</td>
+      <td>${escapeHtml(u.position)}</td>
+      <td>${escapeHtml(u.department)}</td>
+      <td><span class="badge user">USER</span></td>
+      <td>${new Date(u.createdAt).toLocaleString('th-TH')}</td>
+    </tr>
+  `).join('') || `<tr><td colspan="6" style="text-align:center; color:var(--text-lo); padding:24px;">ยังไม่มีผู้ใช้สมัครสมาชิก</td></tr>`;
+
+  document.getElementById('admin-log-feed').innerHTML = logs.slice(0, 40).map(l => `
+    <div class="log-row">
+      <div class="log-dot"></div>
+      <div class="log-text"><b>${escapeHtml(l.username)}</b> — ${escapeHtml(l.action)}</div>
+      <div class="log-time">${new Date(l.time).toLocaleString('th-TH')}</div>
+    </div>
+  `).join('') || `<div style="color:var(--text-lo); font-size:13px; padding:12px 4px;">ยังไม่มีบันทึกการใช้งาน</div>`;
+}
+
+/* ---------- toast ---------- */
+function toast(msg, type){
+  const stack = document.getElementById('toast-stack');
+  const el = document.createElement('div');
+  el.className = 'toast ' + (type === 'error' ? 'error' : '');
+  el.textContent = msg;
+  stack.appendChild(el);
+  setTimeout(() => el.remove(), 3200);
+}
+
+/* ---------- escaping utils ---------- */
+function escapeHtml(str){
+  if (str === undefined || str === null) return '';
+  return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function escapeAttr(str){ return escapeHtml(str); }
+</script>
+</body>
+</html>
