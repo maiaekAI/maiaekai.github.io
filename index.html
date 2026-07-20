@@ -542,20 +542,26 @@ input:checked + .slider .moon-dot{ opacity:1; }
 .page-actions{ display:flex; gap:10px; }
 
 .widget-grid{
+  --wg-cols: 3;
+  --wg-gap: 18px;
   display:grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap:18px;
+  grid-template-columns: repeat(var(--wg-cols), 1fr);
+  gap:var(--wg-gap);
   align-items:start;
 }
+@media (max-width: 1180px){ .widget-grid{ --wg-cols:2; } }
+@media (max-width: 700px){ .widget-grid{ --wg-cols:1; } }
 
 .widget{
   background:var(--bg-1);
   border:1px solid var(--line);
   border-radius:var(--radius-md);
   overflow:hidden;
-  transition:border-color .2s, transform .15s, opacity .15s, box-shadow .15s;
+  grid-column: span 1;
+  transition:border-color .2s, opacity .15s, box-shadow .2s ease,
+             transform .32s cubic-bezier(.34,1.56,.64,1);
   display:flex; flex-direction:column;
-  min-width:260px; min-height:140px;
+  min-width:0; min-height:140px;
   position:relative;
 }
 .widget:hover{ border-color:color-mix(in srgb, var(--accent) 40%, var(--line)); }
@@ -582,16 +588,49 @@ input:checked + .slider .moon-dot{ opacity:1; }
 .widget-head-actions button svg{ width:13px; height:13px; }
 .widget-body{ padding:12px 14px 14px; flex:1; overflow:auto; }
 
-/* ---------- resizable widgets ---------- */
+/* ---------- resizable widgets (snapped to the 3-column grid) ----------
+   ไม่ใช้ resize:both ของเบราว์เซอร์แล้ว (ปรับขนาดอิสระเกินไป ทำให้ผังไม่เป็นระเบียบ)
+   แทนที่ด้วยการลากที่มุมขวาล่าง แล้ว "ยึด" (snap) ความกว้างเป็นจำนวนคอลัมน์ 1/2/3
+   และยึดความสูงเป็นสเต็ปคงที่ พร้อมทรานซิชันแบบสปริงให้ดูลื่นไหลมีชีวิตชีวา
+------------------------------------------------------------- */
 .widget.resizable{
-  resize:both;
-  overflow:auto;
+  overflow:hidden;
+}
+.widget.resizable .widget-body{ overflow:auto; }
+.widget.resize-live{
+  transition: box-shadow .2s ease, transform .32s cubic-bezier(.34,1.56,.64,1);
+  box-shadow:0 0 0 2px var(--accent), var(--shadow-lift);
+  z-index:6;
+  cursor:nwse-resize;
+  user-select:none;
+}
+.widget.resize-pop{
+  animation: widgetResizePop .38s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes widgetResizePop{
+  0%{ transform:scale(1); }
+  45%{ transform:scale(1.014); }
+  100%{ transform:scale(1); }
 }
 .widget .resize-grip{
-  position:absolute; right:2px; bottom:2px; width:14px; height:14px;
-  pointer-events:none; color:var(--text-lo); opacity:.55;
+  position:absolute; right:3px; bottom:3px; width:15px; height:15px;
+  pointer-events:auto; color:var(--text-lo); opacity:.6;
+  cursor:nwse-resize; transition:color .15s ease, opacity .15s ease, transform .15s ease;
+  touch-action:none;
 }
+.widget .resize-grip:hover{ color:var(--accent); opacity:1; transform:scale(1.15); }
 .widget .resize-grip svg{ width:100%; height:100%; }
+.widget-col-guides{
+  position:fixed; inset:0; pointer-events:none; z-index:5; display:none;
+}
+.widget-col-guides.show{ display:block; }
+.widget-col-guides .guide-col{
+  position:absolute; top:0; bottom:0;
+  background:var(--accent-glow);
+  opacity:.12;
+  border-left:1px dashed var(--accent);
+  border-right:1px dashed var(--accent);
+}
 
 /* ---------- view-mode variants for link-list ---------- */
 .link-list.view-list .link-item{ padding:7px 6px; }
@@ -1787,7 +1826,7 @@ function renderCurrentPage(){
   `;
   startClocks();
   attachDragEvents();
-  attachResizeObservers();
+  attachResizeHandles();
 }
 
 /* ---------- drag & drop reorder ----------
@@ -2002,8 +2041,9 @@ function renderWidget(w){
     <div class="rss-item"><a href="#">ระบบจะปิดปรับปรุงคืนวันเสาร์ 23:00</a><div class="rss-meta">ทีม IT · เมื่อวาน</div></div>`;
   }
 
-  const sizeStyle = (w.size && w.size.width && w.size.height)
-    ? `style="width:${w.size.width}px;height:${w.size.height}px;"` : '';
+  const colSpan = Math.min(3, Math.max(1, w.colSpan || 1));
+  const heightStyle = w.height ? `height:${w.height}px;` : '';
+  const sizeStyle = `style="grid-column:span ${colSpan};${heightStyle}"`;
 
   const viewModeBtn = (w.type === 'links' || w.type === 'gems') ? `
           <div class="view-mode-btn">
@@ -2014,7 +2054,7 @@ function renderWidget(w){
           </div>` : '';
 
   return `
-    <div class="widget resizable" data-widget-id="${w.id}" draggable="true" ${sizeStyle}>
+    <div class="widget resizable" data-widget-id="${w.id}" data-col-span="${colSpan}" draggable="true" ${sizeStyle}>
       <div class="widget-head">
         <div class="widget-head-left">
           <div class="widget-drag-handle" title="ลากเพื่อจัดเรียงใหม่">
@@ -2051,26 +2091,121 @@ function setLinkViewMode(widgetId, mode){
   renderCurrentPage();
 }
 
-/* ---------- resizable widgets: persist size per widget ---------- */
-function attachResizeObservers(){
+/* ---------- resizable widgets: drag from the corner grip, snap to the
+   3-column grid (colSpan 1/2/3) and to fixed height steps, with a smooth
+   spring-y "flip" animation every time it snaps to a new size ---------- */
+const RESIZE_HEIGHT_STEP = 20;   // px — height snaps to steps of this size
+const RESIZE_MIN_HEIGHT = 140;   // px — matches .widget min-height
+
+function animateWidgetFlip(el, applyNewState){
+  const first = el.getBoundingClientRect();
+  applyNewState();
+  const last = el.getBoundingClientRect();
+  const dx = first.left - last.left;
+  const dy = first.top - last.top;
+  const sx = last.width ? first.width / last.width : 1;
+  const sy = last.height ? first.height / last.height : 1;
+
+  el.style.transformOrigin = 'top left';
+  el.style.transition = 'none';
+  el.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
+  // force reflow so the browser registers the starting transform before animating
+  void el.offsetWidth;
+  requestAnimationFrame(() => {
+    el.style.transition = 'transform .34s cubic-bezier(.34,1.56,.64,1)';
+    el.style.transform = '';
+  });
+  el.addEventListener('transitionend', function onEnd(e){
+    if (e.propertyName !== 'transform') return;
+    el.style.transition = '';
+    el.removeEventListener('transitionend', onEnd);
+  });
+}
+
+function getWidgetGridMetrics(){
+  const grid = document.getElementById('widget-grid');
+  const styles = getComputedStyle(grid);
+  const gap = parseFloat(styles.columnGap) || 18;
+  const cols = parseInt(styles.getPropertyValue('--wg-cols')) || 3;
+  const colWidth = (grid.clientWidth - gap * (cols - 1)) / cols;
+  return { grid, gap, cols, colWidth };
+}
+
+function attachResizeHandles(){
   document.querySelectorAll('.widget.resizable').forEach(el => {
-    if (el._resizeObserverAttached) return;
-    el._resizeObserverAttached = true;
-    let debounceTimer = null;
-    const ro = new ResizeObserver(entries => {
-      for (const entry of entries) {
-        const { width, height } = entry.contentRect;
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
-          const widgetId = el.dataset.widgetId;
-          const { pages, widget } = getPageAndWidget(widgetId);
-          if (!widget) return;
-          widget.size = { width: Math.round(el.offsetWidth), height: Math.round(el.offsetHeight) };
-          savePages(pages);
-        }, 400);
+    const grip = el.querySelector('.resize-grip');
+    if (!grip || grip._resizeAttached) return;
+    grip._resizeAttached = true;
+
+    let startX = 0, startY = 0, startColSpan = 1, startHeight = 0;
+    let liveColSpan = 1, liveHeight = 0, metrics = null;
+
+    function onPointerDown(e){
+      e.preventDefault();
+      e.stopPropagation();
+      const p = e.touches ? e.touches[0] : e;
+      startX = p.clientX;
+      startY = p.clientY;
+      metrics = getWidgetGridMetrics();
+      startColSpan = parseInt(el.dataset.colSpan || '1', 10);
+      startHeight = el.offsetHeight;
+      liveColSpan = startColSpan;
+      liveHeight = startHeight;
+      el.classList.add('resize-live');
+      document.addEventListener('mousemove', onPointerMove);
+      document.addEventListener('touchmove', onPointerMove, { passive: false });
+      document.addEventListener('mouseup', onPointerUp);
+      document.addEventListener('touchend', onPointerUp);
+    }
+
+    function onPointerMove(e){
+      e.preventDefault();
+      const p = e.touches ? e.touches[0] : e;
+      const dx = p.clientX - startX;
+      const dy = p.clientY - startY;
+
+      const startWidthPx = startColSpan * metrics.colWidth + (startColSpan - 1) * metrics.gap;
+      const targetWidthPx = startWidthPx + dx;
+      let nextColSpan = Math.round((targetWidthPx + metrics.gap) / (metrics.colWidth + metrics.gap));
+      nextColSpan = Math.max(1, Math.min(metrics.cols === 1 ? 1 : (metrics.cols === 2 ? 2 : 3), nextColSpan));
+
+      let nextHeight = Math.round((startHeight + dy) / RESIZE_HEIGHT_STEP) * RESIZE_HEIGHT_STEP;
+      nextHeight = Math.max(RESIZE_MIN_HEIGHT, nextHeight);
+
+      const changed = (nextColSpan !== liveColSpan) || (nextHeight !== liveHeight);
+      if (!changed) return;
+
+      liveColSpan = nextColSpan;
+      liveHeight = nextHeight;
+
+      animateWidgetFlip(el, () => {
+        el.dataset.colSpan = liveColSpan;
+        el.style.gridColumn = `span ${liveColSpan}`;
+        el.style.height = liveHeight + 'px';
+      });
+    }
+
+    function onPointerUp(){
+      el.classList.remove('resize-live');
+      el.classList.add('resize-pop');
+      setTimeout(() => el.classList.remove('resize-pop'), 400);
+      document.removeEventListener('mousemove', onPointerMove);
+      document.removeEventListener('touchmove', onPointerMove);
+      document.removeEventListener('mouseup', onPointerUp);
+      document.removeEventListener('touchend', onPointerUp);
+
+      const widgetId = el.dataset.widgetId;
+      const { pages, widget } = getPageAndWidget(widgetId);
+      if (widget) {
+        widget.colSpan = liveColSpan;
+        widget.height = liveHeight;
+        delete widget.size; // migrate away from the old free-pixel size format
+        savePages(pages);
       }
-    });
-    ro.observe(el);
+    }
+
+    grip.addEventListener('mousedown', onPointerDown);
+    grip.addEventListener('touchstart', onPointerDown, { passive: false });
   });
 }
 
